@@ -151,14 +151,12 @@ function assemble(manifest, variantKey) {
     const per = 3;
     for (let i = 0; i < m.images.photos.length; i += per) {
       const chunk = m.images.photos.slice(i, i + per);
-      const head = i === 0 ? FIXED.photos_h2_start : FIXED.photos_h2_cont;
       md.push("");
       md.push("---");
       md.push("");
-      md.push("## " + head);
-      md.push("");
+      if (i === 0) { md.push("## " + FIXED.photos_h2_start); md.push(""); }
       md.push('<div style="display:flex;gap:4mm">' + chunk.map((p) => '<img src="' + p + '" style="height:100mm;flex:1;object-fit:cover">').join("") + "</div>");
-      sections.push({ id: "sec-photos-" + (i / per + 1), slide: sections.length + 1, title: head, blocks: ["photos"], photos: chunk });
+      sections.push({ id: "sec-photos-" + (i / per + 1), slide: sections.length + 1, title: i === 0 ? FIXED.photos_h2_start : "", blocks: ["photos"], photos: chunk });
     }
   }
 
@@ -452,7 +450,7 @@ function repetitionScan(a, manifest) {
   ].filter((b) => b.on && b.text && b.text.trim());
 
   // Заголовки уникальны документ-wide
-  const headings = [FIXED.title, FIXED.description_h2, FIXED.plans_h2, FIXED.photos_h2_start, FIXED.photos_h2_cont, m.layout.works_heading, FIXED.validity_h3, FIXED.org_process_h3, FIXED.also_included_h3, FIXED.prelim_volumes_h3, FIXED.not_estimated_h3, FIXED.not_included_h2, FIXED.separate_h3, FIXED.engineering_h3, FIXED.permits_h2, FIXED.interaction_h2, FIXED.payment_h2].filter(Boolean);
+  const headings = [FIXED.title, FIXED.description_h2, FIXED.plans_h2, FIXED.photos_h2_start, m.layout.works_heading, FIXED.validity_h3, FIXED.org_process_h3, FIXED.also_included_h3, FIXED.prelim_volumes_h3, FIXED.not_estimated_h3, FIXED.not_included_h2, FIXED.separate_h3, FIXED.engineering_h3, FIXED.permits_h2, FIXED.interaction_h2, FIXED.payment_h2].filter(Boolean);
   const seen = new Map();
   headings.forEach((h) => seen.set(h, (seen.get(h) || 0) + 1));
   const dupHeads = [...seen.entries()].filter(([, c]) => c > 1).map(([h]) => h);
@@ -649,9 +647,9 @@ function renderWorksTable(a) {
 //   титул/описание 76 · план 52 · фото-полоса 34+34 · таблица (15 строк) 169 ·
 //   организация 55 · не входят 127 · согласования+взаимодействие 68 ·
 //   оплата 92 · галерея-строка+подпись 35.
-// Состав страниц: 1 «Объект» = 254 · 2 «Состав работ» = 221 · 3 «Границы» = 226 ·
-// 4 «Условия и финал» = 154 при высоте листа 268 (подпись замыкает документ;
-// замер 01.10 после перевода текста документа на 14 px).
+// Состав страниц: 1 «Объект» = 259 · 2 «Состав работ» = 228 · 3 «Границы» = 225 ·
+// 4 «Условия и финал» = 169 при высоте листа 268 (подпись + контактная строка
+// замыкают документ; замер 01.10 после полосы заголовка, colgroup и итога 14 px).
 // Ёмкость страницы 2 (таблица + организация): 271 − фикс таблицы 39 −
 // организация 55 − отбивки 12 = 165 мм → 18 строк по 8,6 мм (запас).
 const PRINT_TABLE_MAX = 18;
@@ -665,16 +663,19 @@ function renderDoc(a, opts) {
   a.sections.forEach((sec) => {
     let inner = "";
     if (sec.id === "sec-open") {
-      // Логотип — в самом документе (Иван 01.10), не только в кабинете; в потоке
-      // («Условия» ЛК) заголовок не повторяется — название несёт полоса панели.
+      // Полоса заголовка — правило корпуса BP (Иван 01.10): лого слева, рядом
+      // бренд; в печати/листах полоса называет документ («| Коммерческое
+      // предложение»), в потоке («Условия» ЛК) название несёт полоса панели.
       const titleBlock = flow ? "" : '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>";
-      inner = '<img class="doc-logo" src="meleshin-logo.png" alt="MELESHIN">' + titleBlock +
+      const band = '<div class="doc-band"><img src="meleshin-logo.png" alt="MELESHIN"><b>' + esc(m.layout.brand) + "</b>" + (flow ? "" : '<span>| ' + FIXED.title + "</span>") + "</div>";
+      inner = band + titleBlock +
         '<div class="doc-h2">' + FIXED.description_h2 + '</div><div class="doc-grid"><div class="doc-text"><p>' + esc(m.object.opening.replace("{brand}", m.layout.brand.replace(/^MELESHIN\s*/, ""))) + '</p><p><b>Объект.</b> ' + esc(m.object.field_object) + '</p><p><b>Зона работ.</b> ' + esc(m.object.field_zone) + '</p><p><b>Материалы и транспорт.</b> ' + esc(m.object.field_materials) + "</p></div>" +
         '<div class="doc-hero"><img src="' + m.images.hero + '" alt=""></div></div>';
     } else if (sec.id === "sec-plans") {
       inner = '<div class="doc-h2">' + FIXED.plans_h2 + '</div><div class="doc-plan"><img src="' + m.images.plans[0] + '" alt=""></div>';
     } else if (sec.id.startsWith("sec-photos")) {
-      inner = '<div class="doc-h2">' + esc(sec.title) + '</div><div class="doc-photos">' + sec.photos.map((p) => '<img src="' + p + '" alt="">').join("") + "</div>";
+      // Заголовок зоны — на первой фото-полосе; продолжение секции идёт без него
+      inner = (sec.title ? '<div class="doc-h2">' + esc(sec.title) + '</div>' : "") + '<div class="doc-photos">' + sec.photos.map((p) => '<img src="' + p + '" alt="">').join("") + "</div>";
     } else if (sec.id === "sec-works") {
       // Одна таблица работ (Иван 01.10): сопутствующие — строки той же таблицы
       // с продолжением нумерации. Экран: вертикальная сборка под А4 — страница =
@@ -689,7 +690,7 @@ function renderDoc(a, opts) {
         // Настоящая <table>: браузер сам переносит строки и повторяет thead —
         // страница заполняется без остатка, шапка живёт на каждой странице.
         inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" +
-          '<table class="bp-table-print"><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
+          '<table class="bp-table-print"><colgroup><col style="width:4.5%"><col><col style="width:9%"><col style="width:11%"><col style="width:16.5%"><col style="width:17%"></colgroup><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
           a.docRows.map((r) => '<tr><td class="num">' + r.n + '</td><td class="work">' + esc(r.name) + '</td><td class="unit">' + esc(r.unit) + '</td><td class="qty tnum">' + fmtQty(r.qty) + '</td><td class="price tnum">' + fmtMoney(r.price) + '</td><td class="sum tnum">' + fmtMoney(r.cost) + "</td></tr>").join("") +
           // итог — строка tbody: tfoot в печати повторяется на каждой странице
           '<tr class="bp-total-row"><td colspan="6"><div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + " €</span></div></td></tr></tbody></table>" +
@@ -748,7 +749,10 @@ function renderDoc(a, opts) {
   // на экране прижата к низу листа (flex + margin-top: auto), в печати — к низу
   // последней док-страницы.
   const sig = '<div class="doc-manager doc-manager-bottom" id="doc-manager-bottom"><div>' + FIXED.manager.name + '</div><a href="' + FIXED.manager.phone_href + '">' + FIXED.manager.phone + "</a><div>" + esc(m.object.date) + "</div></div>";
-  if (slides.length) slides[slides.length - 1].html += sig;
+  // Контактная строка корпуса BP (футер каждой страницы Марпа) — в веб-документе
+  // замыкает документ после подписи
+  const footer = '<div class="doc-footer">' + FIXED.chrome_footer.replace("{brand}", esc(m.layout.brand)) + "</div>";
+  if (slides.length) slides[slides.length - 1].html += sig + footer;
 
   if (print) {
     // Печатная структура (Иван 01.10): состав страниц задан нормой, не потоком.

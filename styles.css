@@ -299,6 +299,13 @@ li { margin: 4px 0; }
   letter-spacing: -0.02em;
 }
 .doc-subtitle { font-size: 14px; color: var(--ink-2); margin-top: 8px; }
+/* Полоса заголовка — правило корпуса BP: лого слева (23px), рядом бренд, линия;
+   контактная строка замыкает документ после подписи */
+.doc-band { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: 1.5px solid var(--line); margin-bottom: 22px; }
+.doc-band img { height: 23px; object-fit: contain; }
+.doc-band b { font-size: 14px; }
+.doc-band span { font-size: 14px; font-weight: 400; color: var(--ink-2); }
+.doc-footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-3); }
 .doc-h2 {
   font-family: 'Inter', sans-serif;
   font-size: 20px;
@@ -312,7 +319,7 @@ li { margin: 4px 0; }
   color: var(--ink-1);
   margin: 16px 0 8px;
 }
-.doc-h3.doc-price { margin-top: 4px; }
+.doc-h3.doc-price { font-size: 20px; font-weight: 700; margin-top: 4px; }
 .doc-slide p { font-size: 14px; line-height: 1.6; color: var(--ink-2); margin: 8px 0; }
 .doc-slide li { font-size: 14px; color: var(--ink-2); }
 .doc-grid { display: grid; grid-template-columns: 63% 1fr; gap: 22px; align-items: start; }

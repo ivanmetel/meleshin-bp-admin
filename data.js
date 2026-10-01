@@ -8,7 +8,6 @@ const FIXED = {
   description_h2: "Описание проекта",
   plans_h2: "План этажа",
   photos_h2_start: "Фото объекта",
-  photos_h2_cont: "Фото объекта",
   works_cols: ["#", "Работа", "Ед.", "Кол&#8209;во", "Цена за ед., €", "Стоимость, €"],
   related_cols: ["#", "Работа", "Ед.", "Кол&#8209;во", "Цена за ед., €"],
   related_h2: "Проектные сопутствующие работы",
@@ -59,7 +58,7 @@ const FIXED = {
   validity_h3: "Срок действия коммерческого предложения",
   validity: "14 дней.",
   manager: { name: "Мила Мелешина", phone: "+357 99 279161", phone_href: "tel:+35799279161" },
-  chrome_footer: "MELESHIN {brand} | +357 77 788811 | order@meleshin.com.cy | Instagram: renovation_cyprus",
+  chrome_footer: "{brand} | +357 77 788811 | order@meleshin.com.cy | Instagram: renovation_cyprus",
   status_sent: "Отправлен",
   status_agreed: "Согласован с клиентом",
 };
