@@ -562,41 +562,46 @@ function estimateRows(src, room, related) {
   return base.concat(extra).map((r, i) => pos(r, i + 1));
 }
 
-// Навигация сметы (Иван 01.10): вертикально над «Помещение» — «Условия» (предпросмотр
-// КП; согласование и сохранение PDF живут там), затем экраны «Работы» и «Материалы»
-// (переключатели: один или оба, последний не выключается). Ниже — «Помещение» и список
-// помещений. Каунтер = строки таблицы этого экрана после схлопывания одинаковых
-// имя+цена (сопутствующие ед. мес. — последние строки таблицы, в каунтеры не входят);
-// каунтеры видны только при одном экране и только на экране сметы.
+// Навигация сметы (Иван 01.10, правка того же дня): экраны «Условия» / «Работы» /
+// «Материалы» уехали из левой колонки в героя — под «Стоимость по проекту»; слева
+// осталось только «Помещение» и список помещений (фильтр таблиц; клик по помещению
+// в «Условиях» возвращает к таблицам). Поиск по позициям (вернул Иван 01.10) —
+// строка над панелью: фильтрует строки показанных таблиц, итоги блоков и каунтеры
+// пересчитываются по показанным строкам (принцип калькулятора), цена героя
+// остаётся ценой КП. Каунтер = строки таблицы этого экрана после схлопывания
+// одинаковых имя+цена (сопутствующие ед. мес. — последние строки таблицы,
+// в каунтеры не входят); каунтеры видны только при одном экране.
 function estimateTables(a) {
   const room = STATE.room;
   const relRaw = FIXED.related_rows.map((r) => ({ name: r.name, unit: r.unit, qty: r.qty, price: r.price }));
   const related = STATE.manifest.layout.related_table === "separate" ? relRaw : [];
   const vRows = applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows;
+  const s = STATE.search.trim().toLowerCase();
+  const keep = (r) => !s || r.name.toLowerCase().includes(s);
+  const renum = (list) => list.map((r, i) => Object.assign({}, r, { n: i + 1 }));
+  const worksAll = estimateRows(vRows, room, related);
+  const matAll = estimateRows(MATERIALS_ROWS, room, []);
   return {
     room,
     vRows,
-    worksRows: estimateRows(vRows, room, related),
-    matRows: estimateRows(MATERIALS_ROWS, room, []),
-    count: (screen, rm) => estimateRows(screen === "works" ? vRows : MATERIALS_ROWS, rm, []).length,
+    worksRows: renum(worksAll.filter(keep)),
+    matRows: renum(matAll.filter(keep)),
+    count: (screen, rm) => estimateRows(screen === "works" ? vRows : MATERIALS_ROWS, rm, []).filter(keep).length,
+    searchCounts: { s: !!s, works: [worksAll.filter(keep).length, worksAll.length], mats: [matAll.filter(keep).length, matAll.length] },
   };
 }
 
+// Рейл помещений (Иван 01.10): только «Помещение» и комнаты — экраны уехали
+// в героя (renderHero). Решётка: заголовок 44 = полоса названия блока, отступ 36 =
+// полоса шапки таблицы, комнаты 40 = строки таблицы.
 function renderRail(a) {
   const em = estimateModel(a);
   const t = estimateTables(a);
-  const cond = STATE.view === "conditions";
-  // Полосы решётки: «Условия» 44 — зеркало полосы названия блока, «Работы» 36 — зеркало
-  // полосы шапки таблицы, «Материалы» 40 и «Помещение» 40 — зеркала строк 1 и 2.
-  const top =
-    '<button class="rail-44' + (cond ? " active" : "") + '" data-view="conditions"><span>Условия</span></button>' +
-    [["works", "Работы", STATE.works, "rail-36"], ["materials", "Материалы", STATE.materials, ""]].map(([k, l, on, band]) =>
-      '<button' + (band ? ' class="' + band : ' class="') + (on && !cond ? " active" : "") + '" data-screen="' + k + '"><span>' + l + "</span></button>").join("");
-  const one = !cond && STATE.works !== STATE.materials;
+  const one = STATE.view !== "conditions" && STATE.works !== STATE.materials;
   const cnt = (n) => (one ? '<span class="c">' + n + "</span>" : "");
   const pick = (rm) => t.count(STATE.works ? "works" : "materials", rm);
-  const act = (x) => (!cond && t.room === x ? ' class="active"' : "");
-  return '<div class="est-rooms">' + top + '<div class="est-rooms-h">Помещение</div>' +
+  const act = (x) => (STATE.view === "estimate" && t.room === x ? ' class="active"' : "");
+  return '<div class="est-rooms"><div class="est-rooms-h">Помещение</div>' +
     '<button data-room="all"' + act("all") + '><span>Все</span>' + cnt(pick("all")) + "</button>" +
     em.rooms.map((r) => '<button data-room="' + esc(r.name) + '"' + act(r.name) + '><span>' + esc(r.name) + "</span>" + cnt(pick(r.name)) + "</button>").join("") + "</div>";
 }
@@ -668,7 +673,10 @@ function renderDoc(a, opts) {
   a.sections.forEach((sec) => {
     let inner = "";
     if (sec.id === "sec-open") {
-      inner = '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>" +
+      // Логотип — в самом документе (Иван 01.10), не только в кабинете; в потоке
+      // («Условия» ЛК) заголовок не повторяется — название несёт полоса панели.
+      const titleBlock = flow ? "" : '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>";
+      inner = '<img class="doc-logo" src="meleshin-logo.png" alt="MELESHIN">' + titleBlock +
         '<div class="doc-h2">' + FIXED.description_h2 + '</div><div class="doc-grid"><div class="doc-text"><p>' + esc(m.object.opening.replace("{brand}", m.layout.brand.replace(/^MELESHIN\s*/, ""))) + '</p><p><b>Объект.</b> ' + esc(m.object.field_object) + '</p><p><b>Зона работ.</b> ' + esc(m.object.field_zone) + '</p><p><b>Материалы и транспорт.</b> ' + esc(m.object.field_materials) + "</p></div>" +
         '<div class="doc-hero"><img src="' + m.images.hero + '" alt=""></div></div>';
     } else if (sec.id === "sec-plans") {
@@ -794,7 +802,17 @@ function renderDoc(a, opts) {
 function renderHero(a) {
   const m = STATE.manifest;
   const st = STATE.status;
+  const cond = STATE.view === "conditions";
   const thumb = (p) => p.replace("w=900", "w=100").replace("w=700", "w=100");
+  // Экраны (Иван 01.10): «Условия» / «Работы» / «Материалы» — под «Стоимость по
+  // проекту» в правой колонке героя. Условия — исключающий вид; Работы/Материалы —
+  // переключатели (один или оба, последний не выключается).
+  const nav =
+    '<div class="hero-nav">' +
+    '<button class="' + (cond ? "active" : "") + '" data-view="conditions"><span>Условия</span></button>' +
+    '<button class="' + (STATE.works && !cond ? "active" : "") + '" data-screen="works"><span>Работы</span></button>' +
+    '<button class="' + (STATE.materials && !cond ? "active" : "") + '" data-screen="materials"><span>Материалы</span></button>' +
+    "</div>";
   return (
     '<div class="d3-hero"><div class="gallery"><img src="' + m.images.hero + '" alt="">' +
     '<div class="ribbon"><span class="status-pill ' + (st === "agreed" ? "success" : "warn") + '"><span class="dot"></span>' + (st === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + " · " + esc(m.object.date) + '</span><span class="status-pill edition">Вариант: ' + a.variantLabel + "</span></div>" +
@@ -802,8 +820,8 @@ function renderHero(a) {
     '<div class="summary"><div class="proj-label">Коммерческое предложение</div>' +
     "<h2>" + esc(subtitleShort(m)) + "</h2>" +
     '<div class="addr">' + esc(m.object.field_object) + "</div>" +
-    '<div class="total"><div class="lbl">Стоимость по проекту</div><div class="v tnum">' + fmtMoney(a.price) + " €</div>" +
-    '<div class="sub">+ 19% VAT</div></div>' +
+    '<div class="total"><div class="lbl">Стоимость по проекту</div><div class="v tnum">' + fmtMoney(a.price) + ' €</div>' +
+    '<div class="sub">+ 19% VAT</div></div>' + nav +
     "</div></div>"
   );
 }
@@ -818,5 +836,5 @@ function subtitleShort(m) {
    Экспорт (node — smoke-тест машины; браузер — глобальная область)
    ============================================================ */
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, estimateModel, estimateRows, mergeByName, renderEstimate, renderRail, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
+  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, estimateModel, estimateRows, estimateTables, mergeByName, renderEstimate, renderRail, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
 }
