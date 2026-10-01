@@ -639,8 +639,9 @@ function renderWorksTable(a) {
   );
 }
 
-function renderDoc(a) {
+function renderDoc(a, opts) {
   const m = STATE.manifest;
+  const print = !!(opts && opts.print);   // печать (Сохранить PDF): без экранной разбивки таблицы
   const secHtml = [];
 
   a.sections.forEach((sec) => {
@@ -655,20 +656,33 @@ function renderDoc(a) {
       inner = '<div class="doc-h2">' + esc(sec.title) + '</div><div class="doc-photos">' + sec.photos.map((p) => '<img src="' + p + '" alt="">').join("") + "</div>";
     } else if (sec.id === "sec-works") {
       // Одна таблица работ (Иван 01.10): сопутствующие — строки той же таблицы
-      // с продолжением нумерации. Вертикальная сборка под А4: страница = слайд,
-      // заголовок зоны — на первой, шапка таблицы — на каждой, итог — на последней.
+      // с продолжением нумерации. Экран: вертикальная сборка под А4 — страница =
+      // слайд, заголовок зоны на первой, шапка таблицы на каждой, итог на последней.
+      // Печать: одна непрерывная таблица — экранная разбивка по 12 строк в PDF
+      // не переносится (шапка не повторяется посреди страницы).
       const tblHead = '<div class="bp-table"><div class="bp-head">' + FIXED.works_cols.map((c, i) => '<div class="' + (i > 2 ? "r" : "") + '">' + c + "</div>").join("") + "</div>";
       const tblRow = (r) => '<div class="bp-row"><div class="num">' + r.n + '</div><div class="work">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="sum tnum">' + fmtMoney(r.cost) + "</div></div>";
-      const pagesArr = a.worksPages.length ? a.worksPages : [[]];
-      pagesArr.forEach((p, pi) => {
-        const last = pi === pagesArr.length - 1;
-        const tbl = tblHead + p.map(tblRow).join("") +
-          (last ? '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + ' €</span></div></div>' +
-            (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "") : "</div>");
-        const head = pi === 0 ? '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" : "";
-        secHtml.push('<section class="doc-slide" id="sec-works' + (pi ? "-" + (pi + 1) : "") + '">' + head + tbl + "</section>");
-      });
-      return;
+      const tblTail = '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + ' €</span></div></div>' +
+        (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
+      if (print) {
+        // Настоящая <table>: браузер сам переносит строки и повторяет thead —
+        // страница заполняется без остатка, шапка живёт на каждой странице.
+        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" +
+          '<table class="bp-table-print"><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
+          a.docRows.map((r) => '<tr><td class="num">' + r.n + '</td><td class="work">' + esc(r.name) + '</td><td class="unit">' + esc(r.unit) + '</td><td class="qty tnum">' + fmtQty(r.qty) + '</td><td class="price tnum">' + fmtMoney(r.price) + '</td><td class="sum tnum">' + fmtMoney(r.cost) + "</td></tr>").join("") +
+          // итог — строка tbody: tfoot в печати повторяется на каждой странице
+          '<tr class="bp-total-row"><td colspan="6"><div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + " €</span></div></td></tr></tbody></table>" +
+          (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
+      } else {
+        const pagesArr = a.worksPages.length ? a.worksPages : [[]];
+        pagesArr.forEach((p, pi) => {
+          const last = pi === pagesArr.length - 1;
+          const tbl = tblHead + p.map(tblRow).join("") + (last ? tblTail : "</div>");
+          const head = pi === 0 ? '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" : "";
+          secHtml.push('<section class="doc-slide" id="sec-works' + (pi ? "-" + (pi + 1) : "") + '">' + head + tbl + "</section>");
+        });
+        return;
+      }
     } else if (sec.id === "sec-post") {
       let h = "";
       if (a.has.org_process) h += '<div class="doc-h3">' + FIXED.org_process_h3 + "</div><ul>" + FIXED.org_process.map((b) => "<li>" + b + "</li>").join("") + "</ul>";
