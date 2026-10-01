@@ -565,29 +565,20 @@ function estimateRows(src, room, related) {
 // Навигация сметы (Иван 01.10, правка того же дня): экраны «Условия» / «Работы» /
 // «Материалы» уехали из левой колонки в героя — под «Стоимость по проекту»; слева
 // осталось только «Помещение» и список помещений (фильтр таблиц; клик по помещению
-// в «Условиях» возвращает к таблицам). Поиск по позициям (вернул Иван 01.10) —
-// строка над панелью: фильтрует строки показанных таблиц, итоги блоков и каунтеры
-// пересчитываются по показанным строкам (принцип калькулятора), цена героя
-// остаётся ценой КП. Каунтер = строки таблицы этого экрана после схлопывания
-// одинаковых имя+цена (сопутствующие ед. мес. — последние строки таблицы,
-// в каунтеры не входят); каунтеры видны только при одном экране.
+// в «Условиях» возвращает к таблицам). Каунтер = строки таблицы этого экрана после
+// схлопывания одинаковых имя+цена (сопутствующие ед. мес. — последние строки
+// таблицы, в каунтеры не входят); каунтеры видны только при одном экране.
 function estimateTables(a) {
   const room = STATE.room;
   const relRaw = FIXED.related_rows.map((r) => ({ name: r.name, unit: r.unit, qty: r.qty, price: r.price }));
   const related = STATE.manifest.layout.related_table === "separate" ? relRaw : [];
   const vRows = applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows;
-  const s = STATE.search.trim().toLowerCase();
-  const keep = (r) => !s || r.name.toLowerCase().includes(s);
-  const renum = (list) => list.map((r, i) => Object.assign({}, r, { n: i + 1 }));
-  const worksAll = estimateRows(vRows, room, related);
-  const matAll = estimateRows(MATERIALS_ROWS, room, []);
   return {
     room,
     vRows,
-    worksRows: renum(worksAll.filter(keep)),
-    matRows: renum(matAll.filter(keep)),
-    count: (screen, rm) => estimateRows(screen === "works" ? vRows : MATERIALS_ROWS, rm, []).filter(keep).length,
-    searchCounts: { s: !!s, works: [worksAll.filter(keep).length, worksAll.length], mats: [matAll.filter(keep).length, matAll.length] },
+    worksRows: estimateRows(vRows, room, related),
+    matRows: estimateRows(MATERIALS_ROWS, room, []),
+    count: (screen, rm) => estimateRows(screen === "works" ? vRows : MATERIALS_ROWS, rm, []).length,
   };
 }
 
@@ -803,7 +794,6 @@ function renderHero(a) {
   const m = STATE.manifest;
   const st = STATE.status;
   const cond = STATE.view === "conditions";
-  const thumb = (p) => p.replace("w=900", "w=100").replace("w=700", "w=100");
   // Экраны (Иван 01.10): «Условия» / «Работы» / «Материалы» — под «Стоимость по
   // проекту» в правой колонке героя. Условия — исключающий вид; Работы/Материалы —
   // переключатели (один или оба, последний не выключается).
@@ -815,8 +805,7 @@ function renderHero(a) {
     "</div>";
   return (
     '<div class="d3-hero"><div class="gallery"><img src="' + m.images.hero + '" alt="">' +
-    '<div class="ribbon"><span class="status-pill ' + (st === "agreed" ? "success" : "warn") + '"><span class="dot"></span>' + (st === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + " · " + esc(m.object.date) + '</span><span class="status-pill edition">Вариант: ' + a.variantLabel + "</span></div>" +
-    '<div class="thumbs">' + [m.images.hero].concat(m.images.gallery.slice(0, 3)).map((p, i) => '<span class="' + (i === 0 ? "active" : "") + '"><img src="' + thumb(p) + '" alt=""></span>').join("") + "</div></div>" +
+    '<div class="ribbon"><span class="status-pill ' + (st === "agreed" ? "success" : "warn") + '"><span class="dot"></span>' + (st === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + " · " + esc(m.object.date) + '</span><span class="status-pill edition">Вариант: ' + a.variantLabel + "</span></div></div>" +
     '<div class="summary"><div class="proj-label">Коммерческое предложение</div>' +
     "<h2>" + esc(subtitleShort(m)) + "</h2>" +
     '<div class="addr">' + esc(m.object.field_object) + "</div>" +
