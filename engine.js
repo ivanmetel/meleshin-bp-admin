@@ -604,7 +604,17 @@ function renderRail(a) {
 // Панель сметы: две таблицы канона («Строительно-монтажные, отделочные и сопутствующие
 // работы» — позиции + сопутствующие последними строками; «Материалы» — черновые, в
 // стоимости) в тёмной панели; итоги сходятся к «Стоимость по проекту».
+// «Условия» (Иван 01.10) — экран той же панели, каркас не меняется: та же тёмная
+// панель, та же полоса названия; в ней — документ КП в читаемом веб-виде, без
+// листов А4 и без слова «предпросмотр»; «Сохранить PDF» (А4) — внизу, после подписи.
 function renderPanel(a) {
+  if (STATE.view === "conditions") {
+    return '<div class="panel-dark single"><div class="est-blk">' +
+      '<div class="blk-head"><span class="blk-name">Коммерческое предложение</span></div>' +
+      renderDoc(a, { flow: true }) +
+      '<div class="doc-save"><button class="btn ghost" id="btn-pdf">Сохранить PDF</button></div>' +
+      "</div></div>";
+  }
   const t = estimateTables(a);
   const rowHtml = (r) => '<div class="est-row"><div class="num">' + r.n + '</div><div class="name">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="cost tnum">' + fmtMoney(r.cost) + "</div></div>";
   const head = (kind) => '<div class="est-head"><div>#</div><div>' + (kind === "w" ? "Работа" : "Материал") + '</div><div>Ед.</div><div class="r">Кол&#8209;во</div><div class="r">Цена за ед., €</div><div class="r">Стоимость, €</div></div>';
@@ -639,10 +649,21 @@ function renderWorksTable(a) {
   );
 }
 
+// Печатная структура (замер реальной печати 01.10, мм, ёмкость листа 271 при полях 14/13/13):
+//   титул/описание 76 · план 52 · фото-полоса 34+34 · таблица (15 строк) 169 ·
+//   организация 55 · не входят 127 · согласования+взаимодействие 68 ·
+//   оплата 92 · галерея-строка+подпись 35.
+// Состав страниц: 1 «Объект» = 248 · 2 «Состав работ» = 244 · 3 «Границы» = 213 ·
+// 4 «Условия и финал» = 130 при высоте листа 268 (подпись прижата к низу).
+// Ёмкость страницы 2 (таблица + организация): 271 − фикс таблицы 39 −
+// организация 55 − отбивки 12 = 165 мм → 18 строк по 8,6 мм (запас).
+const PRINT_TABLE_MAX = 18;
+
 function renderDoc(a, opts) {
   const m = STATE.manifest;
-  const print = !!(opts && opts.print);   // печать (Сохранить PDF): без экранной разбивки таблицы
-  const secHtml = [];
+  const print = !!(opts && opts.print);   // печать (Сохранить PDF): постраничная структура, не экранная
+  const flow = !!(opts && opts.flow);     // «Условия» ЛК: читаемый веб-вид — тот же состав, без листов А4
+  const slides = [];                      // [{ id, html }] в порядке зон
 
   a.sections.forEach((sec) => {
     let inner = "";
@@ -658,13 +679,13 @@ function renderDoc(a, opts) {
       // Одна таблица работ (Иван 01.10): сопутствующие — строки той же таблицы
       // с продолжением нумерации. Экран: вертикальная сборка под А4 — страница =
       // слайд, заголовок зоны на первой, шапка таблицы на каждой, итог на последней.
-      // Печать: одна непрерывная таблица — экранная разбивка по 12 строк в PDF
-      // не переносится (шапка не повторяется посреди страницы).
+      // Печать: одна непрерывная таблица <table> — шапку повторяет браузер,
+      // если строк больше ёмкости страницы (структура печати — ниже, у сборки).
       const tblHead = '<div class="bp-table"><div class="bp-head">' + FIXED.works_cols.map((c, i) => '<div class="' + (i > 2 ? "r" : "") + '">' + c + "</div>").join("") + "</div>";
       const tblRow = (r) => '<div class="bp-row"><div class="num">' + r.n + '</div><div class="work">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="sum tnum">' + fmtMoney(r.cost) + "</div></div>";
       const tblTail = '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + ' €</span></div></div>' +
         (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
-      if (print) {
+      if (print || flow) {
         // Настоящая <table>: браузер сам переносит строки и повторяет thead —
         // страница заполняется без остатка, шапка живёт на каждой странице.
         inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" +
@@ -679,7 +700,7 @@ function renderDoc(a, opts) {
           const last = pi === pagesArr.length - 1;
           const tbl = tblHead + p.map(tblRow).join("") + (last ? tblTail : "</div>");
           const head = pi === 0 ? '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" : "";
-          secHtml.push('<section class="doc-slide" id="sec-works' + (pi ? "-" + (pi + 1) : "") + '">' + head + tbl + "</section>");
+          slides.push({ id: "sec-works" + (pi ? "-" + (pi + 1) : ""), html: head + tbl });
         });
         return;
       }
@@ -720,16 +741,50 @@ function renderDoc(a, opts) {
     } else if (sec.id === "sec-gallery") {
       inner = '<div class="doc-photos doc-gallery">' + m.images.gallery.map((p) => '<img src="' + p + '" alt="">').join("") + "</div>";
     }
-    secHtml.push('<section class="doc-slide" id="' + sec.id + '">' + inner + "</section>");
+    slides.push({ id: sec.id, html: inner });
   });
 
   // Подпись менеджера — в самом низу документа (Иван 01.10): последняя страница,
-  // прижата к низу листа (flex + margin-top: auto).
+  // на экране прижата к низу листа (flex + margin-top: auto), в печати — к низу
+  // последней док-страницы.
   const sig = '<div class="doc-manager doc-manager-bottom" id="doc-manager-bottom"><div>' + FIXED.manager.name + '</div><a href="' + FIXED.manager.phone_href + '">' + FIXED.manager.phone + "</a><div>" + esc(m.object.date) + "</div></div>";
-  const li = secHtml.length - 1;
-  if (li >= 0) secHtml[li] = secHtml[li].replace(/<\/section>$/, sig + "</section>");
+  if (slides.length) slides[slides.length - 1].html += sig;
 
-  return secHtml.join("");
+  if (print) {
+    // Печатная структура (Иван 01.10): состав страниц задан нормой, не потоком.
+    //   Стр. 1 «Объект» — титул/описание, план, фото объекта
+    //   Стр. 2 «Состав работ» — таблица (одна, итог внизу), организация/также входит
+    //   Стр. 3 «Границы» — в стоимость не входят, согласования, взаимодействие
+    //   Стр. 4 «Условия и финал» — оплата, галерея, подпись прижата к низу листа
+    // Переполнение: строк таблицы больше PRINT_TABLE_MAX (18) → границы сдвигаются
+    // по зонам — таблица занимает страницу 2 одна (шапку повторяет браузер),
+    // организация + не входят — страница 3, согласования + оплата — 4, галерея — 5.
+    const wide = a.docRows.length > PRINT_TABLE_MAX;
+    const pageOf = (id) =>
+      id === "sec-open" || id === "sec-plans" || id.startsWith("sec-photos") ? 0 :
+      id.startsWith("sec-works") ? 1 :
+      id === "sec-post" ? (wide ? 2 : 1) :
+      id === "sec-notinc" ? 2 :
+      id === "sec-interaction" ? (wide ? 3 : 2) :
+      wide ? (id === "sec-payment" ? 3 : 4) :
+      3;   // оплата, галерея, неизвестные — финальная страница
+    const pages = [[], [], [], [], []];
+    slides.forEach((sl) => pages[pageOf(sl.id)].push('<section class="doc-slide" id="' + sl.id + '">' + sl.html + "</section>"));
+    return pages
+      .filter((p) => p.length)
+      .map((p) => '<section class="doc-print-page">' + p.join("") + "</section>")
+      .join("");
+  }
+
+  if (flow) {
+    // «Условия» ЛК (Иван 01.10): тот же документ в читаемом веб-виде — без листов
+    // А4 и без слов «предпросмотр»; А4 остаётся у «Сохранить PDF».
+    return '<div class="doc-flow">' +
+      slides.map((sl) => '<section class="doc-sec" id="' + sl.id + '">' + sl.html + "</section>").join("") +
+      "</div>";
+  }
+
+  return slides.map((sl) => '<section class="doc-slide" id="' + sl.id + '">' + sl.html + "</section>").join("");
 }
 
 
