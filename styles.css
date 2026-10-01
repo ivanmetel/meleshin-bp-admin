@@ -47,7 +47,7 @@ input, select { font-family: inherit; }
 ul { padding-left: 22px; }
 li { margin: 4px 0; }
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
-.mono { font-family: 'SF Mono', Menlo, Consolas, monospace; }
+.mono { font-family: 'Manrope', sans-serif; }
 
 .page { max-width: 1640px; margin: 0 auto; padding: 28px 40px 56px; }
 
@@ -236,7 +236,7 @@ li { margin: 4px 0; }
 .d3-side .item.active { background: var(--accent-soft); color: var(--accent-dark); font-weight: 600; }
 .d3-side .item .c { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .d3-side .item.active .c { color: var(--accent); }
-.d3-side .item.bl { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; }
+.d3-side .item.bl { font-family: 'Manrope', sans-serif; font-size: 12px; }
 
 .d3-content { overflow-y: auto; padding: 20px 24px 28px; }
 
@@ -278,29 +278,28 @@ li { margin: 4px 0; }
 .view-toggle button.active { background: var(--bg-card); color: var(--ink-1); box-shadow: var(--shadow-sm); font-weight: 600; }
 
 /* ---------- Вид: документ (слайды) ---------- */
-.view-doc { display: flex; flex-direction: column; gap: 18px; }
+/* Вертикальная сборка документа (Иван 01.10): страница = лист А4
+   (794 × 1123 px @96dpi), листы идут сверху вниз, без ярлыков «Слайд N». */
+.view-doc { display: flex; flex-direction: column; gap: 24px; }
 .doc-slide {
   position: relative;
+  width: 794px;
+  max-width: 100%;
+  min-height: 1123px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 30px 34px 28px;
+  padding: 48px 56px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
-.doc-slide + .doc-slide { margin-top: 2px; }
-.slide-chip {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  font-family: 'SF Mono', Menlo, monospace;
-  font-size: 12px;
-  color: var(--ink-4);
-  letter-spacing: 0.04em;
-}
-.doc-manager { text-align: right; color: var(--ink-2); font-size: 14px; line-height: 1.5; margin-bottom: 18px; }
+/* Подпись менеджера — в самом низу документа: прижата к нижнему краю листа */
+.doc-manager { text-align: right; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
 .doc-manager a { color: var(--ink-2); text-decoration: none; }
-.doc-manager-bottom { margin: 20px 0 0; }
+.doc-manager-bottom { margin: auto 0 0; padding-top: 24px; }
 .doc-title-outer { text-align: center; margin: 6px 0 22px; }
 .doc-title {
   font-family: 'Manrope', sans-serif;
@@ -370,7 +369,7 @@ li { margin: 4px 0; }
 .bp-row { padding: 11px 14px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
 .bp-row:last-child { border-bottom: none; }
 .bp-row:hover { background: var(--bg-soft); }
-.bp-row .num { font-size: 12px; color: var(--ink-3); font-family: 'SF Mono', Menlo, monospace; }
+.bp-row .num { font-size: 12px; color: var(--ink-3); font-family: 'Manrope', sans-serif; }
 .bp-row .work { font-weight: 600; color: var(--ink-1); padding-right: 10px; }
 .bp-row .unit { color: var(--ink-3); font-size: 12px; }
 .bp-row .qty, .bp-row .price { text-align: right; color: var(--ink-2); font-size: 14px; }
@@ -386,15 +385,14 @@ li { margin: 4px 0; }
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  background: var(--ink-1);
-  color: #fff;
+  background: var(--bg-soft);
+  border-top: 1px solid var(--line);
+  color: var(--ink-1);
 }
 .bp-total .lbl {
-  font-size: 12px;
-  color: rgba(255,255,255,0.7);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 14px;
+  color: var(--ink-2);
+  font-weight: 600;
 }
 .bp-total .v {
   font-family: 'Manrope', sans-serif;
@@ -415,13 +413,13 @@ li { margin: 4px 0; }
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
-.md-name { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--ink-2); }
+.md-name { font-family: 'Manrope', sans-serif; font-size: 12px; color: var(--ink-2); }
 .md-pre {
   background: #1F1F22;
   color: #E8E6E3;
   border-radius: var(--radius-md);
   padding: 22px 24px;
-  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-family: 'Manrope', sans-serif;
   font-size: 12px;
   line-height: 1.65;
   overflow-x: auto;
@@ -466,7 +464,7 @@ li { margin: 4px 0; }
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: 16px 18px;
-  font-family: 'SF Mono', Menlo, monospace;
+  font-family: 'Manrope', sans-serif;
   font-size: 12px;
   line-height: 1.7;
   color: var(--ink-2);
@@ -514,7 +512,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .rep-row.fail { border-color: var(--fail); background: var(--fail-soft); }
 .rep-row.fail .rep-status { color: var(--fail); }
 .rep-row.skip .rep-status { color: var(--ink-4); }
-.rep-n { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--ink-3); }
+.rep-n { font-family: 'Manrope', sans-serif; font-size: 12px; color: var(--ink-3); }
 .rep-title { font-size: 14px; font-weight: 600; color: var(--ink-1); }
 .rep-detail { grid-column: 3; font-size: 12px; color: var(--ink-3); line-height: 1.55; }
 
@@ -568,7 +566,8 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .est-rooms button.rail-44 { height: 44px; }
 .est-rooms button.rail-36 { height: 36px; }
 /* Вид «Условия»: предпросмотр КП, согласование и сохранение PDF живут здесь */
-.cond-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.cond-view { display: flex; flex-direction: column; gap: 24px; }
+.cond-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cond-title { font-family: 'Manrope', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
 .cond-actions { display: flex; gap: 8px; }
 .blk-head {
@@ -616,7 +615,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .est-row { padding: 0 8px; height: 40px; border-bottom: 1px solid rgba(255,255,255,0.07); }
 .est-row:last-child { border-bottom: none; }
 .est-row:hover { background: rgba(255,255,255,0.08); border-radius: 6px; }
-.est-row .num { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: #A69F9A; text-align: left; }
+.est-row .num { font-family: 'Manrope', sans-serif; font-size: 12px; color: #A69F9A; text-align: left; }
 .est-row .name { color: #fff; font-size: 14px; font-weight: 400; line-height: 1.45; text-align: left; white-space: nowrap; }   /* имя в одну строку — высота строки постоянна */
 .est-row .unit { color: #A69F9A; font-size: 12px; text-align: left; }
 .est-row .qty, .est-row .price { color: #fff; font-size: 12px; text-align: right; white-space: nowrap; }
@@ -647,7 +646,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   .app { box-shadow: none; border-radius: 0; }
   .d3-main { display: block; }
   .d3-content { padding: 0; overflow: visible; }
-  .doc-slide { border: none; box-shadow: none; border-radius: 0; padding: 8px 0; page-break-after: always; break-after: page; }
+  .doc-slide { border: none; box-shadow: none; border-radius: 0; width: auto; min-height: 0; margin: 0; padding: 0; page-break-after: always; break-after: page; }
   .doc-slide:last-child { page-break-after: auto; break-after: auto; }
 }
 

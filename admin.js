@@ -21,7 +21,7 @@ function renderReport(a) {
   return (
     '<div class="rep-grid">' +
     '<div class="rep-card"><div class="rep-h">Сборка</div><div class="rep-line">Файл: <b>' + a.filename + "</b></div>" +
-    '<div class="rep-line">Слайдов: ' + a.sections.length + " · строк таблицы: " + a.rows.length + " · страницы таблицы: " + a.pages + " (" + a.rows.length + " строк, по 12 на страницу, заголовок повторяется)</div>" +
+    '<div class="rep-line">Слайдов: ' + (a.sections.length + a.worksPages.length - 1) + " · строк таблицы: " + a.docRows.length + " · страницы таблицы: " + a.worksPages.length + " (по 12 строк, шапка повторяется, итог — на последней)</div>" +
     '<div class="rep-line">Вариант: ' + a.variantLabel + (vc.replaced.length ? " · заменено строк: " + vc.replaced.length : "") + (vc.dropped.length ? " · исключено строк: " + vc.dropped.length : "") + "</div>" +
     '<div class="rep-line">Источники: карточка <span class="mono">' + esc(m.sources.card) + "</span>; смета — " + esc(m.sources.estimate) + "</div></div>" +
     '<div class="rep-card"><div class="rep-h">Агрегация</div>' + (merged || "<div>склеек нет</div>") + (split ? '<div class="rep-sub">Не склеено — одна работа, разные цены:</div>' + split : "") + "</div>" +
@@ -69,7 +69,7 @@ function renderManifest() {
     '<div class="mf-card"><div class="mf-h">Решения ТЗ</div>' +
     f("1. Бренд", '<select data-path="layout.brand"><option' + (m.layout.brand === "MELESHIN LTD" ? " selected" : "") + '>MELESHIN LTD</option><option' + (m.layout.brand === "MELESHIN Group" ? " selected" : "") + ">MELESHIN Group</option></select>") +
     f("2. Язык ЛК клиента (админ-тумблер)", '<select data-path="object.language"><option value="ru"' + (m.object.language === "ru" ? " selected" : "") + '>ru — кабинет на русском</option><option value="en" disabled>en [ ] — решение 2 ТЗ</option></select>') +
-    f("4. Менеджер", '<select data-path="object.manager_top"><option value="1"' + (m.object.manager_top ? " selected" : "") + '>сверху, перед заголовком</option><option value="0"' + (!m.object.manager_top ? " selected" : "") + ">снизу</option></select>") +
+    f("4. Менеджер", '<input value="снизу — решение закрыто 01.10" disabled>') +
     f("5. Срок действия", '<input value="14 дней — фиксированная строка" disabled>') +
     "</div>" +
     '<div class="mf-card mf-wide"><div class="mf-h">Манифест (ТЗ) — указатели на источники</div><pre class="mf-pre">object:    { folder: ' + esc(m.object.folder) + ', language: ' + m.object.language + ", date: " + esc(m.object.date) + " }\n" +
@@ -95,7 +95,7 @@ const BLOCK_REGISTRY = [
   ["separate_estimate", "Отдельной сметой"], ["engineering", "Инженерные работы"], ["permits", "Согласования и разрешения"],
   ["interaction", "Формат взаимодействия"], ["payment", "Условия оплаты a–h"], ["gallery", "Финальная галерея"],
 ];
-const BLOCK_ANCHOR = { chrome: "sec-open", manager: "sec-open", title: "sec-open", subtitle: "sec-open", description: "sec-open", plans: "sec-plans", photos: "sec-photos-1", works_head: "sec-works", works_table: "sec-works", prelim_note: "sec-works", related: "sec-post", org_process: "sec-post", also_included: "sec-post", prelim_volumes: "sec-post", not_estimated: "sec-post", not_included: "sec-notinc", separate_estimate: "sec-notinc", engineering: "sec-notinc", permits: "sec-interaction", interaction: "sec-interaction", payment: "sec-payment", gallery: "sec-gallery" };
+const BLOCK_ANCHOR = { chrome: "sec-open", manager: "doc-manager-bottom", title: "sec-open", subtitle: "sec-open", description: "sec-open", plans: "sec-plans", photos: "sec-photos-1", works_head: "sec-works", works_table: "sec-works", prelim_note: "sec-works", related: "sec-works", org_process: "sec-post", also_included: "sec-post", prelim_volumes: "sec-post", not_estimated: "sec-post", not_included: "sec-notinc", separate_estimate: "sec-notinc", engineering: "sec-notinc", permits: "sec-interaction", interaction: "sec-interaction", payment: "sec-payment", gallery: "sec-gallery" };
 
 function renderSide(a) {
   const m = STATE.manifest;
@@ -118,7 +118,7 @@ function renderSide(a) {
     '<div class="item" data-decision="brand"><span class="name">1 · Бренд</span><span class="c">' + (m.layout.brand === "MELESHIN LTD" ? "LTD" : "Group") + "</span></div>" +
     '<div class="item"><span class="name">2 · en-профиль</span><span class="c">[ ]</span></div>' +
     '<div class="item" data-decision="permits"><span class="name">3 · permits</span><span class="c">' + (m.layout.permits ? "вкл" : "выкл") + "</span></div>" +
-    '<div class="item" data-decision="manager"><span class="name">4 · Менеджер</span><span class="c">' + (m.object.manager_top ? "сверху" : "снизу") + "</span></div>" +
+    '<div class="item"><span class="name">4 · Менеджер</span><span class="c">снизу</span></div>' +
     '<div class="item"><span class="name">5 · Срок действия</span><span class="c">14 дней</span></div>' +
     "</div>"
   );
@@ -158,17 +158,19 @@ function wire(a) {
     const d = b.dataset.decision;
     if (d === "brand") STATE.manifest.layout.brand = STATE.manifest.layout.brand === "MELESHIN LTD" ? "MELESHIN Group" : "MELESHIN LTD";
     if (d === "permits") STATE.manifest.layout.permits = !STATE.manifest.layout.permits;
-    if (d === "manager") STATE.manifest.object.manager_top = !STATE.manifest.object.manager_top;
     renderAllAdmin();
     renderSummary(build());
   }));
   const search = root.querySelector("#doc-search");
   if (search) search.addEventListener("input", () => {
     STATE.search = search.value;
-    const works = document.getElementById("sec-works");
-    if (works) {
-      const aa = build();
-      works.querySelector(".bp-table, .doc-filter-note") && (works.innerHTML = '<div class="doc-h2">' + esc(STATE.manifest.layout.works_heading) + "</div>" + renderWorksTable(aa));
+    if (!STATE.search.trim()) { renderAllAdmin(); return; }   // пустой поиск — вернуть постраничную сборку
+    const pages = [...document.querySelectorAll('section[id^="sec-works"]')];
+    if (pages.length) {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = '<section class="doc-slide" id="sec-works"><div class="doc-h2">' + esc(STATE.manifest.layout.works_heading) + "</div>" + renderWorksTable(build()) + "</section>";
+      pages[0].replaceWith(tmp.firstElementChild);
+      pages.slice(1).forEach((el) => el.remove());
     } else renderAllAdmin();
   });
   root.querySelectorAll(".mf-field input[data-path], .mf-field select[data-path]").forEach((inp) => inp.addEventListener("change", () => {
@@ -178,8 +180,7 @@ function wire(a) {
       const i = om.indexOf("photos");
       if (inp.checked && i >= 0) om.splice(i, 1);
       if (!inp.checked && i < 0) om.push("photos");
-    } else if (p === "object.manager_top") STATE.manifest.object.manager_top = inp.value === "1";
-    else setPath(STATE.manifest, p, inp.type === "checkbox" ? inp.checked : inp.value);
+    } else setPath(STATE.manifest, p, inp.type === "checkbox" ? inp.checked : inp.value);
     renderAllAdmin();
     renderSummary(build());
   }));

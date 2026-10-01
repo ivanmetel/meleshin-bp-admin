@@ -95,7 +95,7 @@ function assemble(manifest, variantKey) {
 
   // Цена (Документ 3.21а): строка-заголовок собирается из таблицы + сопутствующих + материалов.
   const priceLine = (m.commerce.price.kind === "estimate" ? "Ориентировочная стоимость по проекту составляет " : "Стоимость по проекту составляет ") + fmtMoney(price) + " € + 19% VAT.";
-  const breakdownLine = "В том числе: работы — " + fmtMoney(worksSum) + " € (согласно таблице работ), черновые материалы — " + fmtMoney(materials) + " €.";
+  const breakdownLine = "В том числе: работы — " + fmtMoney(worksSum) + " €, черновые материалы — " + fmtMoney(materials) + " €.";
 
   const sections = [];
   const md = [];
@@ -112,7 +112,6 @@ function assemble(manifest, variantKey) {
   md.push('footer: <a href="https://meleshin.com.cy" style="color: inherit; text-decoration: none;">' + brand + '</a> | <a href="tel:+35777788811" style="color: inherit; text-decoration: none;">+357 77 788811</a> | [order@meleshin.com.cy](mailto:order@meleshin.com.cy) | <a href="https://www.instagram.com/renovation_cyprus" style="color: inherit; text-decoration: none;">Instagram: renovation_cyprus</a>');
   md.push("---");
   md.push("");
-  if (m.object.manager_top) { md.push(managerMd); md.push(""); }
   md.push("# <div style=\"text-align: center;\">" + FIXED.title + "</div>");
   md.push("");
   md.push('<div style="text-align: center;">' + m.object.subtitle + "</div>");
@@ -167,10 +166,15 @@ function assemble(manifest, variantKey) {
   const worksHeading = m.layout.works_heading || "Состав работ";
   const alignRow = "|:--:|:--|--:|--:|--:|--:|";
   const headerRow = "| " + FIXED.works_cols.join(" | ") + " |";
-  const itogoMd = "| | **Итого:** | | | | **" + fmtMoney(itogo) + "** |";
+  // Одна таблица работ (Иван 01.10): сопутствующие — последние строки той же таблицы
+  // с продолжением нумерации; итог таблицы = СМР + сопутствующие.
+  const relRows = has.related ? FIXED.related_rows.map((r, i) => ({ n: rows.length + i + 1, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) })) : [];
+  const docRows = rows.concat(relRows);
+  const docItogo = round2(itogo + relTotal);
+  const itogoMd = "| | **Итого:** | | | | **" + fmtMoney(docItogo) + "** |";
   const perPage = 12;
   const pages = [];
-  for (let i = 0; i < rows.length; i += perPage) pages.push(rows.slice(i, i + perPage));
+  for (let i = 0; i < docRows.length; i += perPage) pages.push(docRows.slice(i, i + perPage));
 
   md.push("");
   md.push("---");
@@ -186,24 +190,15 @@ function assemble(manifest, variantKey) {
   });
   if (has.prelim_note) { md.push(""); md.push(FIXED.prelim_note); }
 
-  const tableBlocks = ["works_head", "works_table"].concat(has.prelim_note ? ["prelim_note"] : []);
+  const tableBlocks = ["works_head", "works_table"].concat(has.related ? ["related"] : []).concat(has.prelim_note ? ["prelim_note"] : []);
   sections.push({ id: "sec-works", slide: sections.length + 1, title: worksHeading, blocks: tableBlocks });
 
   // --- Зона после таблицы: related → org_process → also_included → prelim_volumes → not_estimated
-  if (has.related || has.org_process || has.also_included || has.prelim_volumes || has.not_estimated) {
+  if (has.org_process || has.also_included || has.prelim_volumes || has.not_estimated) {
     md.push("");
     md.push("---");
     md.push("");
     const postBlocks = [];
-    if (has.related) {
-      md.push("## " + FIXED.related_h2);
-      md.push("");
-      md.push("| " + FIXED.related_cols.join(" | ") + " |");
-      md.push("|:--:|:--|--:|--:|--:|");
-      FIXED.related_rows.forEach((r, i) => md.push("| " + (i + 1) + " | " + r.name + " | " + r.unit + " | " + fmtQty(r.qty) + " | " + fmtMoney(r.price) + " |"));
-      md.push("");
-      postBlocks.push("related");
-    }
     if (has.org_process) {
       md.push("### " + FIXED.org_process_h3);
       md.push("");
@@ -234,7 +229,7 @@ function assemble(manifest, variantKey) {
       postBlocks.push("prelim_volumes");
       if (has.not_estimated) postBlocks.push("not_estimated");
     }
-    sections.push({ id: "sec-post", slide: sections.length + 1, title: has.related ? FIXED.related_h2 : FIXED.org_process_h3, blocks: postBlocks });
+    sections.push({ id: "sec-post", slide: sections.length + 1, title: FIXED.org_process_h3, blocks: postBlocks });
   }
 
   // --- Зона исключений: not_included (+ separate_estimate, engineering)
@@ -328,11 +323,10 @@ function assemble(manifest, variantKey) {
   md.push("");
   md.push(FIXED.term_tail);
   md.push("");
+  md.push("### " + FIXED.validity_h3);
+  md.push("");
   md.push(FIXED.validity);
   sections.push({ id: "sec-payment", slide: sections.length + 1, title: FIXED.payment_h2, blocks: ["payment"] });
-
-  // --- manager снизу (решение 4, вариант 2631/2635)
-  if (!m.object.manager_top) { md.push(""); md.push(managerMd); }
 
   // --- gallery
   if (has.gallery) {
@@ -346,6 +340,10 @@ function assemble(manifest, variantKey) {
     sections.push({ id: "sec-gallery", slide: sections.length + 1, title: "Галерея", blocks: ["gallery"] });
   }
 
+  // --- подпись менеджера — в самом низу документа (Иван 01.10)
+  md.push("");
+  md.push(managerMd);
+
   // Имя файла (Маркдаун): YYNN допустимо в имени файла, запрещено в клиентских полях.
   let filename = m.object.date_iso + "-meleshin-" + m.object.folder + "-BP";
   if (variantKey !== "base") filename += "-" + variantKey;
@@ -354,7 +352,7 @@ function assemble(manifest, variantKey) {
 
   return {
     variantKey, variantLabel: vres.label, variantChanges: vres.changes,
-    rows, itogo, relTotal, materials, price, worksSum, priceLine, breakdownLine,
+    rows, docRows, itogo, docItogo, relTotal, materials, price, worksSum, priceLine, breakdownLine, worksPages: pages,
     has, emptySlots, sections, filename,
     aggregation: agg, pages: pages.length,
     md: md.join("\n") + "\n",
@@ -441,7 +439,7 @@ function repetitionScan(a, manifest) {
     { id: "subtitle", text: m.object.subtitle, on: true },
     { id: "description", text: [m.object.opening, m.object.field_object, m.object.field_zone, m.object.field_materials].join(" "), on: true },
     { id: "works_head", text: m.layout.works_heading, on: true },
-    { id: "related", text: FIXED.related_h2, on: a.has.related },
+    { id: "related", text: FIXED.related_rows.map((r) => r.name).join(" "), on: a.has.related },
     { id: "org_process", text: FIXED.org_process_h3 + " " + FIXED.org_process.join(" "), on: a.has.org_process },
     { id: "also_included", text: FIXED.also_included_h3 + " " + FIXED.also_included.join(" "), on: a.has.also_included },
     { id: "not_included", text: FIXED.not_included_h2 + " " + Object.entries(m.layout.not_included_sections || {}).map(([k, v]) => k + " " + v.join(" ")).join(" "), on: true },
@@ -454,7 +452,7 @@ function repetitionScan(a, manifest) {
   ].filter((b) => b.on && b.text && b.text.trim());
 
   // Заголовки уникальны документ-wide
-  const headings = [FIXED.title, FIXED.description_h2, FIXED.plans_h2, FIXED.photos_h2_start, FIXED.photos_h2_cont, m.layout.works_heading, FIXED.related_h2, FIXED.org_process_h3, FIXED.also_included_h3, FIXED.prelim_volumes_h3, FIXED.not_estimated_h3, FIXED.not_included_h2, FIXED.separate_h3, FIXED.engineering_h3, FIXED.permits_h2, FIXED.interaction_h2, FIXED.payment_h2].filter(Boolean);
+  const headings = [FIXED.title, FIXED.description_h2, FIXED.plans_h2, FIXED.photos_h2_start, FIXED.photos_h2_cont, m.layout.works_heading, FIXED.validity_h3, FIXED.org_process_h3, FIXED.also_included_h3, FIXED.prelim_volumes_h3, FIXED.not_estimated_h3, FIXED.not_included_h2, FIXED.separate_h3, FIXED.engineering_h3, FIXED.permits_h2, FIXED.interaction_h2, FIXED.payment_h2].filter(Boolean);
   const seen = new Map();
   headings.forEach((h) => seen.set(h, (seen.get(h) || 0) + 1));
   const dupHeads = [...seen.entries()].filter(([, c]) => c > 1).map(([h]) => h);
@@ -631,13 +629,13 @@ function renderEstimate(a) {
    ============================================================ */
 function renderWorksTable(a) {
   const s = STATE.search.trim().toLowerCase();
-  const rows = s ? a.rows.filter((r) => r.name.toLowerCase().includes(s)) : a.rows;
+  const rows = s ? a.docRows.filter((r) => r.name.toLowerCase().includes(s)) : a.docRows;
   return (
     '<div class="bp-table"><div class="bp-head">' + FIXED.works_cols.map((c, i) => '<div class="' + (i > 2 ? "r" : "") + '">' + c + "</div>").join("") + "</div>" +
     rows.map((r) => '<div class="bp-row"><div class="num">' + r.n + '</div><div class="work">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="sum tnum">' + fmtMoney(r.cost) + "</div></div>").join("") +
-    '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.itogo) + " €</span></div></div>" +
+    '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + " €</span></div></div>" +
     (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "") +
-    (s ? '<div class="doc-filter-note">Поиск: ' + rows.length + " из " + a.rows.length + " позиций</div>" : "")
+    (s ? '<div class="doc-filter-note">Поиск: ' + rows.length + " из " + a.docRows.length + " позиций</div>" : "")
   );
 }
 
@@ -648,9 +646,7 @@ function renderDoc(a) {
   a.sections.forEach((sec) => {
     let inner = "";
     if (sec.id === "sec-open") {
-      const mgr = '<div class="doc-manager"><div>' + FIXED.manager.name + '</div><a href="' + FIXED.manager.phone_href + '">' + FIXED.manager.phone + "</a><div>" + esc(m.object.date) + "</div></div>";
-      inner = (m.object.manager_top ? mgr : "") +
-        '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>" +
+      inner = '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>" +
         '<div class="doc-h2">' + FIXED.description_h2 + '</div><div class="doc-grid"><div class="doc-text"><p>' + esc(m.object.opening.replace("{brand}", m.layout.brand.replace(/^MELESHIN\s*/, ""))) + '</p><p><b>Объект.</b> ' + esc(m.object.field_object) + '</p><p><b>Зона работ.</b> ' + esc(m.object.field_zone) + '</p><p><b>Материалы и транспорт.</b> ' + esc(m.object.field_materials) + "</p></div>" +
         '<div class="doc-hero"><img src="' + m.images.hero + '" alt=""></div></div>';
     } else if (sec.id === "sec-plans") {
@@ -658,10 +654,23 @@ function renderDoc(a) {
     } else if (sec.id.startsWith("sec-photos")) {
       inner = '<div class="doc-h2">' + esc(sec.title) + '</div><div class="doc-photos">' + sec.photos.map((p) => '<img src="' + p + '" alt="">').join("") + "</div>";
     } else if (sec.id === "sec-works") {
-      inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + renderWorksTable(a);
+      // Одна таблица работ (Иван 01.10): сопутствующие — строки той же таблицы
+      // с продолжением нумерации. Вертикальная сборка под А4: страница = слайд,
+      // заголовок зоны — на первой, шапка таблицы — на каждой, итог — на последней.
+      const tblHead = '<div class="bp-table"><div class="bp-head">' + FIXED.works_cols.map((c, i) => '<div class="' + (i > 2 ? "r" : "") + '">' + c + "</div>").join("") + "</div>";
+      const tblRow = (r) => '<div class="bp-row"><div class="num">' + r.n + '</div><div class="work">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="sum tnum">' + fmtMoney(r.cost) + "</div></div>";
+      const pagesArr = a.worksPages.length ? a.worksPages : [[]];
+      pagesArr.forEach((p, pi) => {
+        const last = pi === pagesArr.length - 1;
+        const tbl = tblHead + p.map(tblRow).join("") +
+          (last ? '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + ' €</span></div></div>' +
+            (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "") : "</div>");
+        const head = pi === 0 ? '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" : "";
+        secHtml.push('<section class="doc-slide" id="sec-works' + (pi ? "-" + (pi + 1) : "") + '">' + head + tbl + "</section>");
+      });
+      return;
     } else if (sec.id === "sec-post") {
       let h = "";
-      if (a.has.related) h += '<div class="doc-h2">' + FIXED.related_h2 + '</div><table class="doc-mini"><tr>' + FIXED.related_cols.map((c) => "<th>" + c + "</th>").join("") + "</tr>" + FIXED.related_rows.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + r.name + "</td><td>" + r.unit + '</td><td class="r">' + fmtQty(r.qty) + '</td><td class="r">' + fmtMoney(r.price) + "</td></tr>").join("") + "</table>";
       if (a.has.org_process) h += '<div class="doc-h3">' + FIXED.org_process_h3 + "</div><ul>" + FIXED.org_process.map((b) => "<li>" + b + "</li>").join("") + "</ul>";
       if (a.has.also_included) h += '<div class="doc-h3">' + FIXED.also_included_h3 + "</div><ul>" + FIXED.also_included.map((b) => "<li>" + b + "</li>").join("") + "</ul>";
       if (a.has.prelim_volumes) h += '<div class="doc-h3">' + FIXED.prelim_volumes_h3 + "</div><ul>" + m.layout.prelim_volumes.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" + (a.has.not_estimated ? '<div class="doc-h3">' + FIXED.not_estimated_h3 + "</div><ul>" + m.layout.not_estimated.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" : "") + '<p class="doc-note">' + FIXED.prelim_volumes_close + "</p>";
@@ -692,13 +701,19 @@ function renderDoc(a) {
         "<p><b>Предоплата: " + fmtMoney(m.commerce.predoplata || 0) + " € + 19% VAT</b> — " + FIXED.predoplata_purpose + ".</p>" +
         (m.commerce.second_payment && m.commerce.second_payment.amount ? "<p><b>Второй платёж: " + fmtMoney(m.commerce.second_payment.amount) + " € + 19% VAT</b> — " + esc(m.commerce.second_payment.note) + ".</p>" : "") +
         "<p>" + FIXED.final_settlement + "</p>" +
-        '<div class="doc-h3">Срок реализации: ' + esc(m.commerce.term.value) + " " + esc(m.commerce.term.unit) + "</div><p>" + FIXED.term_tail + "</p><p>" + FIXED.validity + "</p>";
-      if (!m.object.manager_top) inner += '<div class="doc-manager doc-manager-bottom"><div>' + FIXED.manager.name + "</div><div>" + esc(m.object.date) + "</div></div>";
+        '<div class="doc-h3">Срок реализации: ' + esc(m.commerce.term.value) + " " + esc(m.commerce.term.unit) + "</div><p>" + FIXED.term_tail + "</p>" +
+        '<div class="doc-h3">' + FIXED.validity_h3 + "</div><p>" + FIXED.validity + "</p>";
     } else if (sec.id === "sec-gallery") {
       inner = '<div class="doc-photos doc-gallery">' + m.images.gallery.map((p) => '<img src="' + p + '" alt="">').join("") + "</div>";
     }
-    secHtml.push('<section class="doc-slide" id="' + sec.id + '"><div class="slide-chip">Слайд ' + sec.slide + "</div>" + inner + "</section>");
+    secHtml.push('<section class="doc-slide" id="' + sec.id + '">' + inner + "</section>");
   });
+
+  // Подпись менеджера — в самом низу документа (Иван 01.10): последняя страница,
+  // прижата к низу листа (flex + margin-top: auto).
+  const sig = '<div class="doc-manager doc-manager-bottom" id="doc-manager-bottom"><div>' + FIXED.manager.name + '</div><a href="' + FIXED.manager.phone_href + '">' + FIXED.manager.phone + "</a><div>" + esc(m.object.date) + "</div></div>";
+  const li = secHtml.length - 1;
+  if (li >= 0) secHtml[li] = secHtml[li].replace(/<\/section>$/, sig + "</section>");
 
   return secHtml.join("");
 }

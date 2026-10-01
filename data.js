@@ -56,7 +56,8 @@ const FIXED = {
   final_settlement: "Окончательный расчёт осуществляется по факту выполненных работ, после подписания акта приёмки-передачи.",
   term_h3: "Срок реализации",
   term_tail: "с момента подписания договора, предоплаты и передачи объекта в работу.",
-  validity: "Срок действия коммерческого предложения — 14 дней.",
+  validity_h3: "Срок действия коммерческого предложения",
+  validity: "14 дней.",
   manager: { name: "Мила Мелешина", phone: "+357 99 279161", phone_href: "tel:+35799279161" },
   chrome_footer: "MELESHIN {brand} | +357 77 788811 | order@meleshin.com.cy | Instagram: renovation_cyprus",
   status_sent: "Отправлен",
@@ -159,7 +160,6 @@ const MANIFEST_DEFAULT = {
     language: "ru", // en-профиль — [ ] в демо
     date: "30.09.2026",
     date_iso: "2026-09-30",
-    manager_top: true, // решение 4: сверху (гайд) / снизу
   },
   sources: {
     card: "renovation/2699-Limassol-Apartment/2026-09-28-meleshin-2699-Limassol-Apartment-card.md",
