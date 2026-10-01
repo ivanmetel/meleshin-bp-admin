@@ -189,7 +189,6 @@ li { margin: 4px 0; }
   font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
 }
 .d3-hero .summary .total .sub { font-size: 14px; font-weight: 600; color: var(--ink-2); margin-top: 4px; line-height: 1.4; }
-.cta-row { display: flex; gap: 8px; margin-top: 4px; }
 .btn {
   padding: 11px 14px;
   border-radius: 6px;
@@ -527,19 +526,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
    полоса экранов 44px (= шапка блока), заголовок «Помещение» 36px (= шапка таблицы),
    дальше шаг 40px. Вторая таблица при обоих экранах возвращается на ту же решётку:
    зазор 40 + шапка блока 44 + шапка таблицы 36 = 120 = 3 × 40. */
-.est-screens { display: flex; gap: 4px; height: 44px; align-items: center; margin-bottom: 0; }
-.est-screens button {
-  flex: 1;
-  padding: 4px 0;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  background: var(--bg-card);
-  border: 1px solid var(--line);
-  color: var(--ink-2);
-}
-.est-screens button.active { background: var(--ink-1); color: #fff; border-color: var(--ink-1); }
-
 /* Тёмная панель: градиент + виньетка (UI-спека: #2B2826 → #3D3734) */
 .panel-dark {
   display: grid;
@@ -559,7 +545,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .est-rooms-h {
   font-size: 12px; font-weight: 600; color: var(--ink-3);
   text-transform: uppercase; letter-spacing: 0.08em;
-  height: 36px;          /* полоса шапки таблиц: «Помещение» на уровне #/Работа */
+  height: 40px;          /* зеркало строки 2 таблицы (решётка: полосы 44/36 заняты Условия/Работы) */
   display: flex; align-items: center;
   margin: 0;
 }
@@ -576,6 +562,15 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .est-rooms button:hover { background: var(--bg-soft); }
 .est-rooms button.active { background: var(--accent-soft); color: var(--accent-dark); }
 .est-rooms button .c { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* Верх навигации (Иван 01.10): «Условия» (предпросмотр КП), «Работы», «Материалы» —
+   вертикально над «Помещение». Полосы решётки: Условия 44 — зеркало полосы названия
+   блока, Работы 36 — зеркало полосы шапки таблицы, Материалы 40 — зеркало строки 1. */
+.est-rooms button.rail-44 { height: 44px; }
+.est-rooms button.rail-36 { height: 36px; }
+/* Вид «Условия»: предпросмотр КП, согласование и сохранение PDF живут здесь */
+.cond-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.cond-title { font-family: 'Manrope', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.cond-actions { display: flex; gap: 8px; }
 .blk-head {
   display: flex;
   align-items: center;

@@ -544,28 +544,70 @@ function estimateModel(a) {
 
 // Встроенный калькулятор: экран показывает позиции сметы, и каждое число считается
 // из видимых строк — каунтер считает строки таблицы, итог блока суммирует их.
-// «Все» — одна таблица: все позиции в порядке источника, нумерация сквозная,
-// сопутствующие ед. мес. — последние строки той же таблицы (в каунтеры не входят);
-// помещение — свои строки, нумерация с 1. Агрегация имя+цена остаётся в документе КП.
+// Одинаковые имя+цена — одна строка: объёмы суммируются, порядок — первое появление
+// в источнике (то же правило, что в таблице документа КП). «Все» — одна таблица:
+// позиции, затем сопутствующие ед. мес. последними строками (в каунтеры не входят);
+// помещение — свои строки. Нумерация всегда с 1.
+function mergeByName(list) {
+  const map = new Map();
+  list.forEach((r) => {
+    const k = r.name + "\u0001" + r.price;
+    if (map.has(k)) map.get(k).qty = round2(map.get(k).qty + r.qty);
+    else map.set(k, { name: r.name, unit: r.unit, qty: r.qty, price: r.price });
+  });
+  return [...map.values()];
+}
 function estimateRows(src, room, related) {
   const pos = (r, n) => ({ n, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) });
-  if (room !== "all") return src.filter((r) => r.room === room).map((r, i) => pos(r, i + 1));
-  const rows = src.map((r, i) => pos(r, i + 1));
-  related.forEach((r) => rows.push(pos(r, rows.length + 1)));
-  return rows;
+  const base = room === "all" ? mergeByName(src) : mergeByName(src.filter((r) => r.room === room));
+  const extra = room === "all" ? mergeByName(related) : [];
+  return base.concat(extra).map((r, i) => pos(r, i + 1));
 }
 
-function renderEstimate(a) {
-  const em = estimateModel(a);
+// Навигация сметы (Иван 01.10): вертикально над «Помещение» — «Условия» (предпросмотр
+// КП; согласование и сохранение PDF живут там), затем экраны «Работы» и «Материалы»
+// (переключатели: один или оба, последний не выключается). Ниже — «Помещение» и список
+// помещений. Каунтер = строки таблицы этого экрана после схлопывания одинаковых
+// имя+цена (сопутствующие ед. мес. — последние строки таблицы, в каунтеры не входят);
+// каунтеры видны только при одном экране и только на экране сметы.
+function estimateTables(a) {
   const room = STATE.room;
-  // Две таблицы (канон): «Строительно-монтажные, отделочные и сопутствующие работы» —
-  // СМР по помещениям + сопутствующие строками той же таблицы (ед. мес., без помещения);
-  // «Материалы» — черновые, в стоимости. Итоги таблиц сходятся к «Стоимость по проекту».
-  const relRaw = FIXED.related_rows.map((r) => ({ name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) }));
+  const relRaw = FIXED.related_rows.map((r) => ({ name: r.name, unit: r.unit, qty: r.qty, price: r.price }));
   const related = STATE.manifest.layout.related_table === "separate" ? relRaw : [];
-  const worksRows = estimateRows(applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows, room, related);
-  const matRows = estimateRows(MATERIALS_ROWS, room, []);
+  const vRows = applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows;
+  return {
+    room,
+    vRows,
+    worksRows: estimateRows(vRows, room, related),
+    matRows: estimateRows(MATERIALS_ROWS, room, []),
+    count: (screen, rm) => estimateRows(screen === "works" ? vRows : MATERIALS_ROWS, rm, []).length,
+  };
+}
 
+function renderRail(a) {
+  const em = estimateModel(a);
+  const t = estimateTables(a);
+  const cond = STATE.view === "conditions";
+  // Полосы решётки: «Условия» 44 — зеркало полосы названия блока, «Работы» 36 — зеркало
+  // полосы шапки таблицы, «Материалы» 40 и «Помещение» 40 — зеркала строк 1 и 2.
+  const top =
+    '<button class="rail-44' + (cond ? " active" : "") + '" data-view="conditions"><span>Условия</span></button>' +
+    [["works", "Работы", STATE.works, "rail-36"], ["materials", "Материалы", STATE.materials, ""]].map(([k, l, on, band]) =>
+      '<button' + (band ? ' class="' + band : ' class="') + (on && !cond ? " active" : "") + '" data-screen="' + k + '"><span>' + l + "</span></button>").join("");
+  const one = !cond && STATE.works !== STATE.materials;
+  const cnt = (n) => (one ? '<span class="c">' + n + "</span>" : "");
+  const pick = (rm) => t.count(STATE.works ? "works" : "materials", rm);
+  const act = (x) => (!cond && t.room === x ? ' class="active"' : "");
+  return '<div class="est-rooms">' + top + '<div class="est-rooms-h">Помещение</div>' +
+    '<button data-room="all"' + act("all") + '><span>Все</span>' + cnt(pick("all")) + "</button>" +
+    em.rooms.map((r) => '<button data-room="' + esc(r.name) + '"' + act(r.name) + '><span>' + esc(r.name) + "</span>" + cnt(pick(r.name)) + "</button>").join("") + "</div>";
+}
+
+// Панель сметы: две таблицы канона («Строительно-монтажные, отделочные и сопутствующие
+// работы» — позиции + сопутствующие последними строками; «Материалы» — черновые, в
+// стоимости) в тёмной панели; итоги сходятся к «Стоимость по проекту».
+function renderPanel(a) {
+  const t = estimateTables(a);
   const rowHtml = (r) => '<div class="est-row"><div class="num">' + r.n + '</div><div class="name">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="cost tnum">' + fmtMoney(r.cost) + "</div></div>";
   const head = (kind) => '<div class="est-head"><div>#</div><div>' + (kind === "w" ? "Работа" : "Материал") + '</div><div>Ед.</div><div class="r">Кол&#8209;во</div><div class="r">Цена за ед., €</div><div class="r">Стоимость, €</div></div>';
   const block = (title, rows, kind) => {
@@ -573,26 +615,15 @@ function renderEstimate(a) {
     return '<div class="est-blk"><div class="blk-head"><span class="blk-name">' + title + '</span><span class="blk-total"><span class="tnum">' + fmtMoney(total) + " €</span></span></div>" +
       '<div class="est-table">' + head(kind) + rows.map(rowHtml).join("") + "</div></div>";
   };
-
   const single = !(STATE.works && STATE.materials);
   let blocks = "";
-  if (STATE.works) blocks += block("Строительно-монтажные, отделочные и сопутствующие работы", worksRows, "w");
-  if (STATE.materials) blocks += block("Материалы", matRows, "m");
+  if (STATE.works) blocks += block("Строительно-монтажные, отделочные и сопутствующие работы", t.worksRows, "w");
+  if (STATE.materials) blocks += block("Материалы", t.matRows, "m");
+  return '<div class="panel-dark' + (single ? " single" : "") + '">' + blocks + "</div>";
+}
 
-  const screens = '<div class="est-screens">' + [["works", "Работы", STATE.works], ["materials", "Материалы", STATE.materials]]
-    .map(([k, l, on]) => '<button data-screen="' + k + '"' + (on ? ' class="active"' : "") + ">" + l + "</button>").join("") + "</div>";
-  // Каунтер = строки таблицы этого экрана (калькулятор: считаются показанные позиции);
-  // «Все» = сумма каунтеров помещений (работы 37, материалы 36); сопутствующие (ед. мес.)
-  // — отдельная именованная группа без помещения, в каунтеры не входят. Оба экрана → каунтеров нет.
-  const one = STATE.works !== STATE.materials;
-  const cnt = (n) => (one ? '<span class="c">' + n + "</span>" : "");
-  const pick = (r) => (STATE.works ? r.wc : r.mc);
-  const total = one ? em.rooms.reduce((s, r) => s + pick(r), 0) : 0;
-  const roomsNav = '<div class="est-rooms">' + screens + '<div class="est-rooms-h">Помещение</div>' +
-    '<button data-room="all"' + (room === "all" ? ' class="active"' : "") + '><span>Все</span>' + cnt(total) + "</button>" +
-    em.rooms.map((r) => '<button data-room="' + esc(r.name) + '"' + (room === r.name ? ' class="active"' : "") + '><span>' + esc(r.name) + "</span>" + cnt(pick(r)) + "</button>").join("") + "</div>";
-  return '<div id="est-root"><div class="est-body">' + roomsNav +
-    '<div class="panel-dark' + (single ? " single" : "") + '">' + blocks + "</div></div></div>";
+function renderEstimate(a) {
+  return '<div id="est-root"><div class="est-body">' + renderRail(a) + renderPanel(a) + "</div></div>";
 }
 
 /* ============================================================
@@ -689,10 +720,7 @@ function renderHero(a) {
     '<div class="addr">' + esc(m.object.field_object) + "</div>" +
     '<div class="total"><div class="lbl">Стоимость по проекту</div><div class="v tnum">' + fmtMoney(a.price) + " €</div>" +
     '<div class="sub">+ 19% VAT</div></div>' +
-    '<div class="cta-row">' +
-    (st === "sent" ? '<button class="btn primary" id="btn-approve">Согласовать</button>' : '<button class="btn ghost" disabled>Согласовано</button>') +
-    '<button class="btn ghost" id="btn-pdf">Сохранить PDF</button>' +
-    "</div></div></div>"
+    "</div></div>"
   );
 }
 
@@ -706,5 +734,5 @@ function subtitleShort(m) {
    Экспорт (node — smoke-тест машины; браузер — глобальная область)
    ============================================================ */
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, estimateModel, estimateRows, renderEstimate, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
+  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, estimateModel, estimateRows, mergeByName, renderEstimate, renderRail, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
 }
