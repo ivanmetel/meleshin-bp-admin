@@ -57,7 +57,7 @@ li { margin: 4px 0; }
   background: var(--accent-soft);
   color: var(--accent-dark);
   border-radius: var(--radius-md);
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.55;
   margin-bottom: 20px;
 }
@@ -87,7 +87,7 @@ li { margin: 4px 0; }
   gap: 8px;
   font-family: 'Manrope', sans-serif;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
 }
 .d3-top .brand .mark {
   width: 26px; height: 26px;
@@ -98,7 +98,7 @@ li { margin: 4px 0; }
 .d3-top .nav { display: flex; gap: 4px; margin-left: 12px; }
 .d3-top .nav span {
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink-3);
   border-radius: 6px;
@@ -115,7 +115,7 @@ li { margin: 4px 0; }
   gap: 6px;
   padding: 5px 11px;
   border-radius: 6px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 500;
   background: var(--bg-soft);
   color: var(--ink-2);
@@ -145,7 +145,7 @@ li { margin: 4px 0; }
   gap: 6px;
   padding: 4px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
   background: #fff;
@@ -165,7 +165,7 @@ li { margin: 4px 0; }
   background: var(--bg-soft);
 }
 .d3-hero .summary .proj-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-3);
   text-transform: uppercase;
@@ -173,7 +173,7 @@ li { margin: 4px 0; }
 }
 .d3-hero .summary h2 {
   font-family: 'Manrope', sans-serif;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -181,7 +181,7 @@ li { margin: 4px 0; }
 .d3-hero .summary .addr { font-size: 12px; color: var(--ink-3); }
 .d3-hero .summary .total { margin-top: 2px; padding-top: 14px; border-top: 1px solid var(--line); }
 .d3-hero .summary .total .lbl {
-  font-size: 11px; color: var(--ink-3); font-weight: 500;
+  font-size: 12px; color: var(--ink-3); font-weight: 500;
   text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px;
 }
 .d3-hero .summary .total .v {
@@ -193,7 +193,7 @@ li { margin: 4px 0; }
 .btn {
   padding: 11px 14px;
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -203,7 +203,7 @@ li { margin: 4px 0; }
 .btn.primary { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(184,92,60,0.3); }
 .btn.ghost { background: var(--bg-card); border: 1px solid var(--line); color: var(--ink-1); }
 .btn:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
-.btn.sm { padding: 7px 11px; font-size: 11.5px; border-radius: 6px; }
+.btn.sm { padding: 7px 11px; font-size: 12px; border-radius: 6px; }
 
 /* ---------- Основная сетка: сайдбар + контент ---------- */
 .d3-main { display: grid; grid-template-columns: 264px 1fr; flex: 1; min-height: 0; }
@@ -214,7 +214,7 @@ li { margin: 4px 0; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-3);
   text-transform: uppercase;
@@ -229,15 +229,15 @@ li { margin: 4px 0; }
   gap: 8px;
   padding: 6px 10px;
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--ink-2);
   cursor: pointer;
 }
 .d3-side .item:hover { background: var(--bg-soft); }
 .d3-side .item.active { background: var(--accent-soft); color: var(--accent-dark); font-weight: 600; }
-.d3-side .item .c { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.d3-side .item .c { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .d3-side .item.active .c { color: var(--accent); }
-.d3-side .item.bl { font-family: 'SF Mono', Menlo, monospace; font-size: 11.5px; }
+.d3-side .item.bl { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; }
 
 .d3-content { overflow-y: auto; padding: 20px 24px 28px; }
 
@@ -258,7 +258,7 @@ li { margin: 4px 0; }
 .d3-toolbar .search svg { width: 15px; height: 15px; color: var(--ink-3); flex-shrink: 0; }
 .d3-toolbar .search input {
   border: none; background: transparent; outline: none;
-  font-size: 13px; color: var(--ink-1); flex: 1; min-width: 0;
+  font-size: 14px; color: var(--ink-1); flex: 1; min-width: 0;
 }
 .d3-toolbar .search input::placeholder { color: var(--ink-3); }
 .view-toggle {
@@ -295,11 +295,11 @@ li { margin: 4px 0; }
   top: 14px;
   right: 16px;
   font-family: 'SF Mono', Menlo, monospace;
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--ink-4);
   letter-spacing: 0.04em;
 }
-.doc-manager { text-align: right; color: var(--ink-2); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+.doc-manager { text-align: right; color: var(--ink-2); font-size: 14px; line-height: 1.5; margin-bottom: 18px; }
 .doc-manager a { color: var(--ink-2); text-decoration: none; }
 .doc-manager-bottom { margin: 20px 0 0; }
 .doc-title-outer { text-align: center; margin: 6px 0 22px; }
@@ -318,13 +318,13 @@ li { margin: 4px 0; }
   margin: 0 0 14px;
 }
 .doc-h3 {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--accent-dark);
   margin: 16px 0 8px;
 }
-.doc-h3.doc-price { font-family: 'Manrope', sans-serif; font-size: 16.5px; margin-top: 4px; }
-.doc-slide p { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 8px 0; }
+.doc-h3.doc-price { font-family: 'Manrope', sans-serif; font-size: 16px; margin-top: 4px; }
+.doc-slide p { font-size: 14px; line-height: 1.6; color: var(--ink-2); margin: 8px 0; }
 .doc-grid { display: grid; grid-template-columns: 63% 1fr; gap: 22px; align-items: start; }
 .doc-hero { border-radius: var(--radius-md); overflow: hidden; }
 .doc-hero img { width: 100%; height: 250px; object-fit: cover; }
@@ -335,10 +335,10 @@ li { margin: 4px 0; }
 .doc-gallery img { height: 150px; }
 .doc-note { font-size: 12px; color: var(--ink-3); font-style: italic; margin-top: 10px; }
 .doc-filter-note { font-size: 12px; color: var(--ink-3); margin-top: 8px; }
-.doc-mini { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 6px; }
+.doc-mini { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 6px; }
 .doc-mini th {
   text-align: left;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-3);
   text-transform: uppercase;
@@ -354,13 +354,13 @@ li { margin: 4px 0; }
 .bp-table { border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
 .bp-head, .bp-row {
   display: grid;
-  grid-template-columns: 46px 1fr 40px 60px 104px 104px;   /* Ед. — «компл.», Кол-во — «9 999,99» */
+  grid-template-columns: 46px 1fr 44px 64px 104px 104px;   /* Ед. — «компл.», Кол-во — «9 999,99» */
   align-items: center;
 }
 .bp-head {
   padding: 10px 14px;
   background: var(--bg-soft);
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-3);
   text-transform: uppercase;
@@ -368,18 +368,18 @@ li { margin: 4px 0; }
   border-bottom: 1px solid var(--line);
 }
 .bp-head .r { text-align: right; }
-.bp-row { padding: 11px 14px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.bp-row { padding: 11px 14px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
 .bp-row:last-child { border-bottom: none; }
 .bp-row:hover { background: var(--bg-soft); }
-.bp-row .num { font-size: 11px; color: var(--ink-3); font-family: 'SF Mono', Menlo, monospace; }
+.bp-row .num { font-size: 12px; color: var(--ink-3); font-family: 'SF Mono', Menlo, monospace; }
 .bp-row .work { font-weight: 600; color: var(--ink-1); padding-right: 10px; }
 .bp-row .unit { color: var(--ink-3); font-size: 12px; }
-.bp-row .qty, .bp-row .price { text-align: right; color: var(--ink-2); font-size: 12.5px; }
+.bp-row .qty, .bp-row .price { text-align: right; color: var(--ink-2); font-size: 14px; }
 .bp-row .sum {
   text-align: right;
   font-weight: 700;
   font-family: 'Manrope', sans-serif;
-  font-size: 13.5px;
+  font-size: 14px;
   letter-spacing: -0.01em;
 }
 .bp-total {
@@ -391,7 +391,7 @@ li { margin: 4px 0; }
   color: #fff;
 }
 .bp-total .lbl {
-  font-size: 11.5px;
+  font-size: 12px;
   color: rgba(255,255,255,0.7);
   font-weight: 500;
   text-transform: uppercase;
@@ -440,7 +440,7 @@ li { margin: 4px 0; }
 }
 .mf-card.mf-wide { grid-column: 1 / -1; }
 .mf-h {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-3);
   text-transform: uppercase;
@@ -448,13 +448,13 @@ li { margin: 4px 0; }
   margin-bottom: 14px;
 }
 .mf-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-.mf-field span { font-size: 11.5px; color: var(--ink-3); font-weight: 500; }
+.mf-field span { font-size: 12px; color: var(--ink-3); font-weight: 500; }
 .mf-field input[type="text"], .mf-field input:not([type]), .mf-field input[type="number"], .mf-field select {
   border: 1px solid var(--line);
   background: var(--bg-soft);
   border-radius: 6px;
   padding: 8px 11px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-1);
   outline: none;
   width: 100%;
@@ -468,7 +468,7 @@ li { margin: 4px 0; }
   border-radius: var(--radius-md);
   padding: 16px 18px;
   font-family: 'SF Mono', Menlo, monospace;
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.7;
   color: var(--ink-2);
   overflow-x: auto;
@@ -489,16 +489,16 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
 .rep-card.gates { grid-column: 1 / -1; }
 .rep-h {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-3);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: 12px;
 }
-.rep-line { font-size: 13px; color: var(--ink-2); line-height: 1.6; margin: 4px 0; word-break: break-word; }
+.rep-line { font-size: 14px; color: var(--ink-2); line-height: 1.6; margin: 4px 0; word-break: break-word; }
 .rep-line b { color: var(--ink-1); }
-.rep-sub { font-size: 11.5px; font-weight: 600; color: var(--ink-3); margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+.rep-sub { font-size: 12px; font-weight: 600; color: var(--ink-3); margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 0.05em; }
 .rep-row {
   display: grid;
   grid-template-columns: 26px 30px 1fr;
@@ -510,13 +510,13 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   margin-bottom: 6px;
   background: var(--bg-soft);
 }
-.rep-status { font-weight: 700; font-size: 13px; }
+.rep-status { font-weight: 700; font-size: 14px; }
 .rep-row.pass .rep-status { color: var(--success); }
 .rep-row.fail { border-color: var(--fail); background: var(--fail-soft); }
 .rep-row.fail .rep-status { color: var(--fail); }
 .rep-row.skip .rep-status { color: var(--ink-4); }
-.rep-n { font-family: 'SF Mono', Menlo, monospace; font-size: 11px; color: var(--ink-3); }
-.rep-title { font-size: 13px; font-weight: 600; color: var(--ink-1); }
+.rep-n { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: var(--ink-3); }
+.rep-title { font-size: 14px; font-weight: 600; color: var(--ink-1); }
 .rep-detail { grid-column: 3; font-size: 12px; color: var(--ink-3); line-height: 1.55; }
 
 /* ---------- Вид: клиентская смета (экраны работы/материалы) ---------- */
@@ -557,7 +557,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
    шаг колонок одинаковый (таблица: 40 c бордером внутри, навигация: 40 без зазоров) */
 .est-rooms { display: flex; flex-direction: column; gap: 0; padding-top: 26px; }
 .est-rooms-h {
-  font-size: 11px; font-weight: 600; color: var(--ink-3);
+  font-size: 12px; font-weight: 600; color: var(--ink-3);
   text-transform: uppercase; letter-spacing: 0.08em;
   height: 36px;          /* полоса шапки таблиц: «Помещение» на уровне #/Работа */
   display: flex; align-items: center;
@@ -568,14 +568,14 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   padding: 0 12px;
   height: 40px;
   border-radius: 6px;
-  font-size: 12.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink-2);
   text-align: left;
 }
 .est-rooms button:hover { background: var(--bg-soft); }
 .est-rooms button.active { background: var(--accent-soft); color: var(--accent-dark); }
-.est-rooms button .c { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.est-rooms button .c { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .blk-head {
   display: flex;
   align-items: center;
@@ -586,7 +586,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
 .blk-name { color: #fff; font-size: 16px; font-weight: 500; }
 .blk-total { color: #fff; text-align: right; white-space: nowrap; }
-.blk-total .tnum { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; font-family: 'Manrope', sans-serif; }
+.blk-total .tnum { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; font-family: 'Manrope', sans-serif; }
 
 /* Правило ширины (десктоп): таблица занимает всю ширину блока; распределение
    по роли колонок — имя гибкое (забирает остаток, min под типовую строку),
@@ -595,7 +595,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
    скролл — запасной вариант ниже минимума. */
 .est-table {
   display: grid;
-  grid-template-columns: 26px minmax(160px, 2.4fr) 38px 57px max-content max-content;
+  grid-template-columns: 26px minmax(160px, 2.4fr) 44px 57px max-content max-content;
   column-gap: 7px;
   row-gap: 0;
   align-items: center;
@@ -609,7 +609,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   padding: 0 8px;
 }
 .est-head {
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 400;
   color: #A69F9A;
   letter-spacing: 0.02em;
@@ -621,11 +621,11 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .est-row { padding: 0 8px; height: 40px; border-bottom: 1px solid rgba(255,255,255,0.07); }
 .est-row:last-child { border-bottom: none; }
 .est-row:hover { background: rgba(255,255,255,0.08); border-radius: 6px; }
-.est-row .num { font-family: 'SF Mono', Menlo, monospace; font-size: 10.5px; color: #A69F9A; text-align: left; }
-.est-row .name { color: #fff; font-size: 12.5px; font-weight: 400; line-height: 1.45; text-align: left; white-space: nowrap; }   /* имя в одну строку — высота строки постоянна */
-.est-row .unit { color: #A69F9A; font-size: 11.5px; text-align: left; }
+.est-row .num { font-family: 'SF Mono', Menlo, monospace; font-size: 12px; color: #A69F9A; text-align: left; }
+.est-row .name { color: #fff; font-size: 14px; font-weight: 400; line-height: 1.45; text-align: left; white-space: nowrap; }   /* имя в одну строку — высота строки постоянна */
+.est-row .unit { color: #A69F9A; font-size: 12px; text-align: left; }
 .est-row .qty, .est-row .price { color: #fff; font-size: 12px; text-align: right; white-space: nowrap; }
-.est-row .cost { text-align: right; color: #fff; font-size: 12.5px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.est-row .cost { text-align: right; color: #fff; font-size: 14px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* ---------- Подвал страницы ---------- */
 .page-footer {
@@ -667,13 +667,13 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   .est-body { grid-template-columns: 1fr; }
   .doc-grid { grid-template-columns: 1fr; }
   .doc-hero img { height: 180px; }
-  .bp-head, .bp-row { grid-template-columns: 34px 1fr 38px 57px 84px 84px; font-size: 12px; }
+  .bp-head, .bp-row { grid-template-columns: 34px 1fr 44px 64px 84px 84px; font-size: 12px; }
 }
 
 /* ---------- Админка: сводка в шапке ---------- */
 .sum-line {
   padding: 10px 22px 14px;
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--ink-3);
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -682,7 +682,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   align-items: baseline;
 }
 .sum-line b { color: var(--ink-1); }
-.sum-line .mono { font-size: 11.5px; }
-.d3-top .right .btn { padding: 7px 14px; font-size: 12.5px; white-space: nowrap; }
-.d3-top .nav a { color: var(--ink-3); text-decoration: none; font-size: 13px; padding: 6px 12px; border-radius: 6px; }
+.sum-line .mono { font-size: 12px; }
+.d3-top .right .btn { padding: 7px 14px; font-size: 14px; white-space: nowrap; }
+.d3-top .nav a { color: var(--ink-3); text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
 .d3-top .nav a:hover { color: var(--accent-dark); background: var(--bg-soft); }
