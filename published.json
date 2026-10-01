@@ -1,0 +1,125 @@
+{
+  "generated": "2026-10-01",
+  "variant": "base",
+  "status": "sent",
+  "manifest": {
+    "object": {
+      "folder": "2699-Limassol-Apartment",
+      "subtitle": "Выполнение комплекса работ по капитальному ремонту",
+      "scope": "капитальному ремонту",
+      "opening": "Компания MELESHIN {brand} выполняет комплекс работ по капитальному ремонту квартиры на основании Проектной документации Заказчика.",
+      "field_object": "Квартира 120 м², Лимасол.",
+      "basis_doc": "Проектной документацией Заказчика",
+      "field_zone": "Вся площадь квартиры; ориентировочно 120 м².",
+      "field_materials": "Черновые материалы закупает и доставляет Исполнитель; подъём на этаж включён.",
+      "language": "ru",
+      "date": "30.09.2026",
+      "date_iso": "2026-09-30",
+      "manager_top": true
+    },
+    "sources": {
+      "card": "renovation/2699-Limassol-Apartment/2026-09-28-meleshin-2699-Limassol-Apartment-card.md",
+      "estimate": "inline (37 строк, см. ESTIMATE_ROWS)"
+    },
+    "images": {
+      "hero": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=900&q=80",
+      "plans": [
+        "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=900&q=80"
+      ],
+      "photos": [
+        "https://images.unsplash.com/photo-1558002038-1055907df827?w=700&q=80",
+        "https://images.unsplash.com/photo-1567752881298-626bb6843575?w=700&q=80",
+        "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=700&q=80",
+        "https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?w=700&q=80",
+        "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=700&q=80",
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=700&q=80"
+      ],
+      "gallery": [
+        "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=700&q=80",
+        "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=700&q=80",
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=700&q=80",
+        "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=700&q=80"
+      ]
+    },
+    "commerce": {
+      "price": {
+        "kind": "final",
+        "clause": ""
+      },
+      "materials": 12400,
+      "predoplata": 12000,
+      "second_payment": {
+        "amount": 9000,
+        "note": "после завершения черновых работ"
+      },
+      "term": {
+        "value": 12,
+        "unit": "недель"
+      },
+      "reporting": false
+    },
+    "layout": {
+      "brand": "MELESHIN LTD",
+      "permits": true,
+      "works_heading": "Состав работ",
+      "org_process": "on",
+      "related_table": "separate",
+      "omit": [],
+      "not_included_form": "subsections",
+      "prelim_volumes": [
+        "объёмы штукатурки стен",
+        "объёмы укладки плитки"
+      ],
+      "not_estimated": [],
+      "separate_estimate": [
+        "Замена оконных блоков — 5 шт.",
+        "Устройство барной стойки из бетона — 1 шт."
+      ],
+      "engineering": "",
+      "not_included_sections": {
+        "Отделочные материалы": [
+          "Плитка, керамогранит",
+          "Ламинат",
+          "Краска для стен и потолков"
+        ],
+        "Чистовая электрика": [
+          "Розетки и выключатели",
+          "Светильники"
+        ],
+        "Чистовая сантехника": [
+          "Смесители",
+          "Душевая система"
+        ]
+      },
+      "extra_works": [
+        "Перенос стен по утверждённому дизайн-проекту",
+        "Гидроизоляция дополнительного санузла"
+      ]
+    },
+    "variants": {
+      "base": {
+        "label": "Перегородки ГКЛ"
+      },
+      "aerocrete": {
+        "label": "Газоблок",
+        "replace": [
+          {
+            "match": "Монтаж каркасных перегородок",
+            "row": {
+              "name": "Монтаж перегородок из газоблока",
+              "unit": "м²",
+              "qty": 18,
+              "price": 52
+            }
+          }
+        ]
+      },
+      "no-partition": {
+        "label": "Без перепланировки",
+        "drop": [
+          "Монтаж каркасных перегородок"
+        ]
+      }
+    }
+  }
+}
