@@ -626,18 +626,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .est-row .unit { color: #A69F9A; font-size: 11.5px; text-align: left; }
 .est-row .qty, .est-row .price { color: #fff; font-size: 12px; text-align: right; white-space: nowrap; }
 .est-row .cost { text-align: right; color: #fff; font-size: 12.5px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
-/* Метка группы помещения («Все»): строка той же решётки 40px, под собой — позиции группы */
-.est-group {
-  grid-column: 1 / -1;
-  display: flex; align-items: center;
-  height: 40px;
-  padding: 0 8px;
-  font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: #A69F9A;
-  background: rgba(255,255,255,0.04);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-}
 
 /* ---------- Подвал страницы ---------- */
 .page-footer {

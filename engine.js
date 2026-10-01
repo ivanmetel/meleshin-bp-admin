@@ -544,21 +544,15 @@ function estimateModel(a) {
 
 // Встроенный калькулятор: экран показывает позиции сметы, и каждое число считается
 // из видимых строк — каунтер считает строки таблицы, итог блока суммирует их.
-// «Все» — группы помещений со сквозной нумерацией (сопутствующие ед. мес. — последняя
-// именованная группа, в каунтеры не входят), помещение — своя группа, нумерация с 1.
-// Агрегация имя+цена остаётся в документе КП, клиентский экран её не показывает.
-function estimateGroups(src, room, rooms, related) {
-  const posRows = (roomKey, startN) => src.filter((r) => r.room === roomKey).map((r, i) => ({ n: startN + i, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) }));
-  if (room !== "all") return [{ label: null, rows: posRows(room, 1) }];
-  const gs = [];
-  let n = 1;
-  rooms.forEach((r) => {
-    const rows = posRows(r.name, n);
-    n += rows.length;
-    if (rows.length) gs.push({ label: r.name, rows });
-  });
-  if (related.length) gs.push({ label: FIXED.related_h2, rows: related.map((r, i) => Object.assign({ n: n + i }, r)) });
-  return gs;
+// «Все» — одна таблица: все позиции в порядке источника, нумерация сквозная,
+// сопутствующие ед. мес. — последние строки той же таблицы (в каунтеры не входят);
+// помещение — свои строки, нумерация с 1. Агрегация имя+цена остаётся в документе КП.
+function estimateRows(src, room, related) {
+  const pos = (r, n) => ({ n, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) });
+  if (room !== "all") return src.filter((r) => r.room === room).map((r, i) => pos(r, i + 1));
+  const rows = src.map((r, i) => pos(r, i + 1));
+  related.forEach((r) => rows.push(pos(r, rows.length + 1)));
+  return rows;
 }
 
 function renderEstimate(a) {
@@ -569,23 +563,21 @@ function renderEstimate(a) {
   // «Материалы» — черновые, в стоимости. Итоги таблиц сходятся к «Стоимость по проекту».
   const relRaw = FIXED.related_rows.map((r) => ({ name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) }));
   const related = STATE.manifest.layout.related_table === "separate" ? relRaw : [];
-  const worksGroups = estimateGroups(applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows, room, em.rooms, related);
-  const matGroups = estimateGroups(MATERIALS_ROWS, room, em.rooms, []);
+  const worksRows = estimateRows(applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows, room, related);
+  const matRows = estimateRows(MATERIALS_ROWS, room, []);
 
   const rowHtml = (r) => '<div class="est-row"><div class="num">' + r.n + '</div><div class="name">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="cost tnum">' + fmtMoney(r.cost) + "</div></div>";
   const head = (kind) => '<div class="est-head"><div>#</div><div>' + (kind === "w" ? "Работа" : "Материал") + '</div><div>Ед.</div><div class="r">Кол&#8209;во</div><div class="r">Цена за ед., €</div><div class="r">Стоимость, €</div></div>';
-  const groupHtml = (g) => (g.label ? '<div class="est-group">' + esc(g.label) + "</div>" : "") + g.rows.map(rowHtml).join("");
-  const block = (title, grps, kind) => {
-    const rows = grps.flatMap((g) => g.rows);
+  const block = (title, rows, kind) => {
     const total = round2(rows.reduce((s, r) => s + r.cost, 0));
     return '<div class="est-blk"><div class="blk-head"><span class="blk-name">' + title + '</span><span class="blk-total"><span class="tnum">' + fmtMoney(total) + " €</span></span></div>" +
-      '<div class="est-table">' + head(kind) + grps.map(groupHtml).join("") + "</div></div>";
+      '<div class="est-table">' + head(kind) + rows.map(rowHtml).join("") + "</div></div>";
   };
 
   const single = !(STATE.works && STATE.materials);
   let blocks = "";
-  if (STATE.works) blocks += block("Строительно-монтажные, отделочные и сопутствующие работы", worksGroups, "w");
-  if (STATE.materials) blocks += block("Материалы", matGroups, "m");
+  if (STATE.works) blocks += block("Строительно-монтажные, отделочные и сопутствующие работы", worksRows, "w");
+  if (STATE.materials) blocks += block("Материалы", matRows, "m");
 
   const screens = '<div class="est-screens">' + [["works", "Работы", STATE.works], ["materials", "Материалы", STATE.materials]]
     .map(([k, l, on]) => '<button data-screen="' + k + '"' + (on ? ' class="active"' : "") + ">" + l + "</button>").join("") + "</div>";
@@ -714,5 +706,5 @@ function subtitleShort(m) {
    Экспорт (node — smoke-тест машины; браузер — глобальная область)
    ============================================================ */
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, estimateModel, estimateGroups, renderEstimate, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
+  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, estimateModel, estimateRows, renderEstimate, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
 }
