@@ -82,7 +82,7 @@ function renderInspector(a) {
   if (!insp) return inspCard("Как править",
     '<p class="insp-text">Кликните по элементу документа — здесь откроется его источник, а редактируемые поля появятся в этой панели.</p>' +
     '<p class="insp-text">Редактируются: титул, подзаголовок и дата; заголовок таблицы работ; условия оплаты; род цены; решения по разделам — согласования, организация работ, фото, форма блока «В стоимость не входят».</p>' +
-    '<p class="insp-text">Состав работ приходит из сметы, тексты блоков заданы ТЗ — клик по ним показывает происхождение, без правки здесь.</p>' +
+    '<p class="insp-text">Состав работ приходит из сметы; тексты блоков заданы шаблоном КП (в демо — data.js, в производстве — ТЗ) и одинаковы во всех КП — клик по блоку называет его зону и владельца.</p>' +
     '<div class="insp-actions"><button class="btn ghost" data-act="reset">Сбросить манифест</button></div>');
 
   if (insp.kind === "work") {
@@ -158,7 +158,8 @@ function renderInspector(a) {
   if (insp.kind === "org") {
     return inspCard("Организация строительного процесса",
       inspField("Форма", '<select data-path="layout.org_process"><option value="on"' + (m.layout.org_process === "on" ? " selected" : "") + '>блок целиком</option><option value="fold"' + (m.layout.org_process === "fold" ? " selected" : "") + ">свёрнута в «В стоимость также входит»</option></select>") +
-      inspNote("Свёрнутая форма заменяет блок списком из двух пунктов после таблицы работ."));
+      srcTag("Источник: шаблон КП (фиксированные блоки ТЗ)") +
+      inspNote("Текст пунктов задан шаблоном (data.js / ТЗ); конструктор выбирает форму — блок или свёртка."));
   }
 
   if (insp.kind === "photos") {
@@ -173,7 +174,11 @@ function renderInspector(a) {
       srcTag("Источник: карточка проекта") + inspNote("Списки позиций (отделочные материалы, чистовая электрика и сантехника) приходят из карточки."));
   }
 
-  return inspCard("Фиксированный блок ТЗ", inspNote("Этот текст фиксирован спецификацией и в конструкторе не редактируется."));
+  if (insp.kind === "fixed") {
+    return inspCard(insp.zone ? "Блок «" + insp.zone + "»" : "Фиксированный блок ТЗ",
+      srcTag("Источник: шаблон КП (фиксированные блоки ТЗ)") +
+      inspNote("Текст задан шаблоном и одинаков во всех КП. Правка — в шаблоне: в демо это data.js (блоки FIXED), в производстве — ТЗ шаблона; изменение действует на все будущие КП. В конструкторе отдельного КП он не меняется."));
+  }
 }
 
 /* ============================================================
@@ -249,7 +254,9 @@ function resolveInsp(a, e) {
   if (id === "sec-payment") return { kind: "payments" };
   if (id === "sec-notinc") return { kind: "notinc" };
   if (id === "sec-interaction" && a.has.permits && t.closest(".doc-h2") === sec.querySelectorAll(".doc-h2")[0]) return { kind: "permits" };
-  return { kind: "fixed" };
+  // Прочая проза — шаблон: инспектор называет зону и владельца текста
+  const heads = [...sec.querySelectorAll(".doc-h2, .doc-h3")].filter((h) => h.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING);
+  return { kind: "fixed", zone: heads.length ? heads[heads.length - 1].textContent.trim() : "" };
 }
 
 function renderAll() {
