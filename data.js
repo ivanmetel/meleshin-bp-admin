@@ -4,6 +4,7 @@
 
 // Фиксированные блоки — дословно из ТЗ (раздел 6); машина не сочиняет текст.
 const FIXED = {
+  brand: "MELESHIN LTD", // константа, не решение ТЗ (Иван 02.10: «У нас MELESHIN LTD и всё»)
   title: "Коммерческое предложение",
   description_h2: "Описание проекта",
   plans_h2: "План этажа",
@@ -184,14 +185,13 @@ const MANIFEST_DEFAULT = {
   },
   commerce: {
     price: { kind: "final", clause: "" }, // final | estimate
-    materials: 12400, // черновые материалы, значение Ивана
+    materials: 12400, // черновые материалы — в цене, не поле КП (ТЗ ЛК v2 §4)
     predoplata: 12000,
     second_payment: { amount: 9000, note: "после завершения черновых работ" },
     term: { value: 12, unit: "недель" },
     reporting: false, // пункт об отчётности — только длинные проекты
   },
   layout: {
-    brand: "MELESHIN LTD", // решение 1
     permits: true, // решение 3
     works_heading: "Строительно-монтажные, отделочные и сопутствующие работы",
     org_process: "on", // on | fold (fold → also_included)

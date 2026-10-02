@@ -61,7 +61,7 @@ function relatedTotal(manifest) {
 // Сборка документа: блоки реестра в маршруте ТЗ (Документ), арифметика, итоги, markdown-эмиттер.
 function assemble(manifest, variantKey) {
   const m = manifest;
-  const brand = m.layout.brand;
+  const brand = FIXED.brand;   // константа, не решение (Иван 02.10): MELESHIN LTD
   const vres = applyVariant(ESTIMATE_ROWS, m, variantKey);
   const agg = aggregate(vres.rows);
 
@@ -501,7 +501,6 @@ const STATE = {
   view: "doc", // вид админки: документ | маркдаун | манифест | отчёт (ЛК клиента v2 вида не использует — одна вкладка КП)
   room: "all", // ЛК v2: выбор помещения фильтрует таблицу работ в документе
   status: "sent", // Отправлен | Согласован с клиентом (ТЗ Клиентская смета, 4)
-  search: "",
   prev: null,
 };
 
@@ -568,17 +567,6 @@ function renderEstimate(a) {
 /* ============================================================
    Представление: документ (слайды)
    ============================================================ */
-function renderWorksTable(a) {
-  const s = STATE.search.trim().toLowerCase();
-  const rows = s ? a.docRows.filter((r) => r.name.toLowerCase().includes(s)) : a.docRows;
-  return (
-    '<div class="bp-table"><div class="bp-head">' + FIXED.works_cols.map((c, i) => '<div class="' + (i > 2 ? "r" : "") + '">' + c + "</div>").join("") + "</div>" +
-    rows.map((r) => '<div class="bp-row"><div class="num">' + r.n + '</div><div class="work">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="sum tnum">' + fmtMoney(r.cost) + "</div></div>").join("") +
-    '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + " €</span></div></div>" +
-    (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "") +
-    (s ? '<div class="doc-filter-note">Поиск: ' + rows.length + " из " + a.docRows.length + " позиций</div>" : "")
-  );
-}
 
 // Печатная структура (замер реальной печати 01.10, мм, ёмкость листа 271 при полях 14/13/13):
 //   титул/описание 76; план 52; фото-полоса 34+34; таблица (15 строк) 169;
@@ -604,9 +592,9 @@ function renderDoc(a, opts) {
       // не называет документ (Иван 02.10): «Коммерческое предложение» — сам
       // заголовок, крупно и по центру, во всех видах, включая поток ЛК (экран = PDF).
       const titleBlock = '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>";
-      const band = '<div class="doc-band"><img src="meleshin-logo.png" alt="MELESHIN"><b>' + esc(m.layout.brand) + "</b></div>";
+      const band = '<div class="doc-band"><img src="meleshin-logo.png" alt="MELESHIN"><b>' + esc(FIXED.brand) + "</b></div>";
       inner = band + titleBlock +
-        '<div class="doc-h2">' + FIXED.description_h2 + '</div><div class="doc-grid"><div class="doc-text"><p>' + esc(m.object.opening.replace("{brand}", m.layout.brand.replace(/^MELESHIN\s*/, ""))) + '</p><p><b>Объект.</b> ' + esc(m.object.field_object) + '</p><p><b>Зона работ.</b> ' + esc(m.object.field_zone) + '</p><p><b>Материалы и транспорт.</b> ' + esc(m.object.field_materials) + "</p></div>" +
+        '<div class="doc-h2">' + FIXED.description_h2 + '</div><div class="doc-grid"><div class="doc-text"><p>' + esc(m.object.opening.replace("{brand}", FIXED.brand.replace(/^MELESHIN\s*/, ""))) + '</p><p><b>Объект.</b> ' + esc(m.object.field_object) + '</p><p><b>Зона работ.</b> ' + esc(m.object.field_zone) + '</p><p><b>Материалы и транспорт.</b> ' + esc(m.object.field_materials) + "</p></div>" +
         '<div class="doc-hero"><img src="' + m.images.hero + '" alt=""></div></div>';
     } else if (sec.id === "sec-plans") {
       inner = '<div class="doc-h2">' + FIXED.plans_h2 + '</div><div class="doc-plan"><img src="' + m.images.plans[0] + '" alt=""></div>';
@@ -615,14 +603,10 @@ function renderDoc(a, opts) {
       inner = (sec.title ? '<div class="doc-h2">' + esc(sec.title) + '</div>' : "") + '<div class="doc-photos">' + sec.photos.map((p) => '<img src="' + p + '" alt="">').join("") + "</div>";
     } else if (sec.id === "sec-works") {
       // Одна таблица работ (Иван 01.10): сопутствующие — строки той же таблицы
-      // с продолжением нумерации. Экран: вертикальная сборка под А4 — страница =
-      // слайд, заголовок зоны на первой, шапка таблицы на каждой, итог на последней.
-      // Печать: одна непрерывная таблица <table> — шапку повторяет браузер,
-      // если строк больше ёмкости страницы (структура печати — ниже, у сборки).
-      const tblHead = '<div class="bp-table"><div class="bp-head">' + FIXED.works_cols.map((c, i) => '<div class="' + (i > 2 ? "r" : "") + '">' + c + "</div>").join("") + "</div>";
-      const tblRow = (r) => '<div class="bp-row"><div class="num">' + r.n + '</div><div class="work">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="sum tnum">' + fmtMoney(r.cost) + "</div></div>";
-      const tblTail = '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + ' €</span></div></div>' +
-        (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
+      // с продолжением нумерации. Одна таблица на всех поверхностях (норма
+      // ТЗ §9, 02.10): карточка ЛК, печать и вид «Документ» админки рендерят
+      // printTable — одни кегли, один colgroup, один итог; шапку на каждой
+      // странице печати повторяет браузер.
       // Настоящая <table> — одна и та же в карточке КП и в PDF (что клиент
       // читает, то и сохраняет); при выходе за страницу печати шапку
       // повторяет браузер. Ширины колонок назначил Иван (02.10, verbatim):
@@ -633,10 +617,7 @@ function renderDoc(a, opts) {
         rows.map((r) => '<tr><td class="num">' + r.n + '</td><td class="work">' + esc(r.name) + '</td><td class="unit">' + esc(r.unit) + '</td><td class="qty tnum">' + fmtQty(r.qty) + '</td><td class="price tnum">' + fmtMoney(r.price) + '</td><td class="sum tnum">' + fmtMoney(r.cost) + "</td></tr>").join("") +
         // итог — строка tbody: tfoot в печати повторяется на каждой странице
         '<tr class="bp-total-row"><td colspan="6"><div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(total) + " €</span></div></td></tr></tbody></table>";
-      if (print) {
-        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + printTable(a.docRows, a.docItogo) +
-          (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
-      } else if (flow) {
+      if (flow) {
         // Вид по помещению (ТЗ ЛК v2 §3 + раунд 02.10): «Все» — таблица документа
         // (сквозная нумерация, сопутствующие последними, «Итого» 21 688,00);
         // помещение — свой состав: нумерация с 1, плашка суммирует видимые строки
@@ -659,14 +640,9 @@ function renderDoc(a, opts) {
         inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + chooser + printTable(rows, total) +
           (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
       } else {
-        const pagesArr = a.worksPages.length ? a.worksPages : [[]];
-        pagesArr.forEach((p, pi) => {
-          const last = pi === pagesArr.length - 1;
-          const tbl = tblHead + p.map(tblRow).join("") + (last ? tblTail : "</div>");
-          const head = pi === 0 ? '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" : "";
-          slides.push({ id: "sec-works" + (pi ? "-" + (pi + 1) : ""), html: head + tbl });
-        });
-        return;
+        // Печать и вид «Документ» админки — одна непрерывная таблица (норма §9)
+        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + printTable(a.docRows, a.docItogo) +
+          (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
       }
     } else if (sec.id === "sec-post") {
       let h = "";
@@ -714,7 +690,7 @@ function renderDoc(a, opts) {
   const sig = '<div class="doc-manager doc-manager-bottom" id="doc-manager-bottom"><div>' + FIXED.manager.name + '</div><a href="' + FIXED.manager.phone_href + '">' + FIXED.manager.phone + "</a><div>" + esc(m.object.date) + "</div></div>";
   // Контактная строка корпуса BP (футер каждой страницы Марпа) — в веб-документе
   // замыкает документ после подписи
-  const footer = '<div class="doc-footer">' + FIXED.chrome_footer.replace("{brand}", esc(m.layout.brand)) + "</div>";
+  const footer = '<div class="doc-footer">' + FIXED.chrome_footer.replace("{brand}", esc(FIXED.brand)) + "</div>";
   if (slides.length) slides[slides.length - 1].html += sig + footer;
 
   if (print) {
@@ -789,5 +765,5 @@ function subtitleShort(m) {
    Экспорт (node — smoke-тест машины; браузер — глобальная область)
    ============================================================ */
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, mergeByName, roomModel, renderEstimate, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
+  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, mergeByName, roomModel, renderEstimate, renderPanel, renderDoc, renderHero, fmtMoney, fmtQty, build };
 }

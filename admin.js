@@ -1,20 +1,216 @@
-// Админка машины сборки КП (bp-admin) — операционная часть: конструктор (манифест,
-// блоки, варианты), документ, маркдаун, отчёт. Работает поверх engine.js.
-// Связь с ЛК: «Предпросмотр ЛК клиента» открывает meleshin-bp-client с текущим
-// состоянием конструктора в адресе (#preview=...); опубликованное для клиента
-// состояние — published.json этого репо (ЛК грузит его по умолчанию).
+// Админка машины сборки КП (bp-admin) — конструктор «Собрать» (ТЗ Админка,
+// tz/bp/2026-10-02-tz-bp-admin.md, 02.10): админка = собранный клиентский документ
+// с видимым происхождением каждого элемента. Три колонки: рельс разделов документа
+// (статусы данных), сам документ (карточка ЛК — экран = PDF), инспектор источника
+// нажатого элемента. Состав работ read-only: источник — смета, правка состава —
+// только вариантами (табы с диффом). Верхняя панель: СОБРАТЬ / ПРОВЕРИТЬ /
+// ПРЕДПРОСМОТР ЛК / ОТПРАВИТЬ. Работает поверх engine.js; машина и манифест
+// без изменений. Вид «Маркдаун» и форм-грид «Конструктор» умерли (ТЗ §4–§5).
 const CLIENT_URL = "https://ivanmetel.github.io/meleshin-bp-client/";
 
+STATE.view = "build";
+STATE.insp = null;
+
 /* ============================================================
-   Представления: markdown, манифест, отчёт
+   Рельс: разделы документа человеческими именами + статусы данных
    ============================================================ */
-function renderMd(a) {
-  return '<div class="md-wrap"><div class="md-bar"><span class="md-name">' + a.filename + "</span></div><pre class=\"md-pre\">" + esc(a.md) + "</pre></div>";
+function railModel(a) {
+  const m = STATE.manifest;
+  const omitPhotos = (m.layout.omit || []).includes("photos");
+  return [
+    { name: "Титул", sel: "#sec-open .doc-title-outer", ok: true, c: "" },
+    { name: "Описание", sel: "#sec-open .doc-h2", ok: true, c: "" },
+    { name: "План", sel: "#sec-plans", ok: a.has.plans, c: a.has.plans ? "1 лист" : "нет файла" },
+    { name: "Фото", sel: "#sec-photos-1", ok: a.has.photos, c: a.has.photos ? m.images.photos.length + " фото" : (omitPhotos ? "исключено" : "нет файлов") },
+    { name: "Работы", sel: "#sec-works", ok: true, c: a.docRows.length + " — " + fmtMoney(a.docItogo) + " €" },
+    { name: "Организация", sel: "#sec-post", ok: true, c: a.has.also_included ? "свёрнута" : "" },
+    { name: "Границы", sel: "#sec-notinc", ok: true, c: "" },
+    { name: "Согласования", sel: "#sec-interaction .doc-h2", selFallback: "#sec-interaction", ok: a.has.permits, c: a.has.permits ? "" : "исключено" },
+    { name: "Взаимодействие", sel: "#sec-interaction", ok: true, c: "" },
+    { name: "Оплата", sel: "#sec-payment", ok: a.emptySlots.length === 0, c: a.emptySlots.length ? "пустые слоты" : "" },
+    { name: "Галерея", sel: "#sec-gallery", ok: m.images.gallery.length > 0, c: m.images.gallery.length + " фото" },
+  ];
 }
+
+function renderRail(a) {
+  const items = railModel(a).map((s) =>
+    '<div class="rail-item" data-sel="' + esc(s.sel) + '"' + (s.selFallback ? ' data-sel-fb="' + esc(s.selFallback) + '"' : "") + ">" +
+    '<span class="st ' + (s.ok ? "ok" : s.c ? "warn" : "off") + '"></span><span class="nm">' + s.name + "</span>" +
+    (s.c ? '<span class="c">' + esc(s.c) + "</span>" : "") + "</div>").join("");
+  return '<div class="rail-h">Документ</div>' + items +
+    '<div class="rail-legend"><span><i class="st ok"></i> данные есть</span><span><i class="st warn"></i> нужно действие</span><span><i class="st off"></i> отсутствует</span></div>';
+}
+
+/* ============================================================
+   Дифф варианта против базы (ТЗ §3)
+   ============================================================ */
+function variantDiff() {
+  const m = STATE.manifest;
+  const base = assemble(clone(m), "base");
+  const cur = assemble(clone(m), STATE.variant);
+  const lines = [];
+  cur.variantChanges.replaced.forEach((r) => lines.push("Замена: " + r.from + " → " + r.to));
+  cur.variantChanges.dropped.forEach((n) => lines.push("Исключено: " + n));
+  return { lines, delta: round2(cur.itogo - base.itogo) };
+}
+
+/* ============================================================
+   Верхняя панель: объект, табы вариантов, режимы
+   ============================================================ */
+function renderBar(a) {
+  const m = STATE.manifest;
+  const tabs = Object.entries(m.variants).map(([k, v]) =>
+    '<button data-variant="' + esc(k) + '"' + (STATE.variant === k ? ' class="active"' : "") + ">" + esc(v.label) + "</button>").join("");
+  let diff = "";
+  if (STATE.variant !== "base") {
+    const d = variantDiff();
+    const delta = (d.delta > 0 ? "+" : "") + fmtMoney(d.delta);
+    diff = '<button class="bb-diff" data-insp-variant="1">' + esc(d.lines.join("; ") || "без изменений") + " — итого " + delta + " €</button>";
+  }
+  const mode = (k, label) => '<button data-view="' + k + '"' + (STATE.view === k ? ' class="active"' : "") + ">" + label + "</button>";
+  return (
+    '<div class="bb-obj">' + esc(m.object.folder) + ' <span class="c">— КП от ' + esc(m.object.date) + "</span></div>" +
+    '<div class="vtabs">' + tabs + "</div>" + diff +
+    '<div class="bb-modes">' +
+    mode("build", "Собрать") +
+    mode("check", "Проверить " + a.gatesPassed + "/" + a.gatesTotal) +
+    mode("send", "Отправить") +
+    "</div>"
+  );
+}
+
+/* ============================================================
+   Инспектор: источник нажатого элемента
+   ============================================================ */
+function inspCard(title, body) { return '<div class="insp-card"><div class="insp-h">' + title + "</div>" + body + "</div>"; }
+function inspField(label, inner) { return '<label class="insp-f"><span>' + label + "</span>" + inner + "</label>"; }
+function inspRow(k, v) { return '<div class="insp-row"><span>' + k + "</span><b>" + v + "</b></div>"; }
+function srcTag(text) { return '<div class="src-tag">' + text + "</div>"; }
+function inspNote(text) { return '<div class="insp-note">' + text + "</div>"; }
+
+// Строки таблицы в текущем виде документа (все / помещение) — как в engine,
+// чтобы инспектор показывал то, что на экране
+function currentWorkRows(a) {
+  if (STATE.room === "all" || !STATE.room) return a.docRows;
+  const vRows = applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows;
+  return mergeByName(vRows.filter((r) => r.room === STATE.room)).map((r, i) => ({ n: i + 1, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) }));
+}
+
+function renderInspector(a) {
+  const m = STATE.manifest;
+  const insp = STATE.insp;
+  if (!insp) return inspCard("Конструктор «Собрать»",
+    '<p class="insp-text">Кликните по любому элементу документа — панель покажет, откуда он: строку сметы, фиксированный блок ТЗ или редактируемое поле.</p>' +
+    '<p class="insp-text">Состав работ не редактируется: он подтянут из сметы. Правка состава — вариантами (табы сверху).</p>' +
+    '<div class="insp-actions"><button class="btn ghost" data-act="reset">Сбросить манифест</button></div>');
+
+  if (insp.kind === "work") {
+    const rows = currentWorkRows(a);
+    const r = rows[insp.i];
+    if (!r) return inspCard("Строка", "<p class='insp-text'>Строка не найдена.</p>");
+    const related = STATE.room === "all" && insp.i >= a.rows.length;
+    let src = "";
+    if (related) src = srcTag("Фиксированный блок ТЗ") + inspNote("Проектные сопутствующие работы; редактируются только в ТЗ.");
+    else if (r.parts || STATE.room !== "all") {
+      const parts = r.parts ? r.parts.map((p) => esc(p.room) + " " + fmtQty(p.qty)).join(" + ") : esc(r.qty ? "строки помещения «" + STATE.room + "»" : "");
+      src = srcTag("Источник: смета") + (r.parts ? '<div class="insp-parts">' + parts + "</div>" : "") + inspNote("Склейка по правилу «имя + цена»: одинаковые строки помещений — одна строка документа, количества суммируются.");
+    } else src = srcTag("Источник: смета");
+    return inspCard("Строка " + r.n,
+      inspRow("Работа", esc(r.name)) + inspRow("Ед.", esc(r.unit)) + inspRow("Кол-во", fmtQty(r.qty)) + inspRow("Цена за ед.", fmtMoney(r.price) + " €") + inspRow("Стоимость", fmtMoney(r.cost) + " €") +
+      '<div class="ladder"><div class="li"><span>' + fmtQty(r.qty) + " × " + fmtMoney(r.price) + "</span><span>" + fmtMoney(r.cost) + " €</span></div></div>" +
+      src + inspNote("Состав и количества в конструкторе не меняются (ТЗ Админка §2)."));
+  }
+
+  if (insp.kind === "total") {
+    return inspCard("Итого таблицы",
+      '<div class="ladder">' +
+      '<div class="li"><span>Строительно-монтажные и отделочные</span><span>' + fmtMoney(a.itogo) + " €</span></div>" +
+      '<div class="li"><span>Сопутствующие (2 строки)</span><span>' + fmtMoney(a.relTotal) + " €</span></div>" +
+      '<div class="li eq"><span>Итого</span><span>' + fmtMoney(a.docItogo) + " €</span></div></div>" +
+      inspNote(a.rows.length + " позиций склеено из " + ESTIMATE_ROWS.length + " строк сметы; сопутствующие — последние строки той же таблицы."));
+  }
+
+  if (insp.kind === "price") {
+    return inspCard("Строка цены",
+      '<div class="ladder">' +
+      '<div class="li"><span>Итого таблицы</span><span>' + fmtMoney(a.docItogo) + " €</span></div>" +
+      '<div class="li"><span>Черновые материалы</span><span>' + fmtMoney(m.commerce.materials) + " €</span></div>" +
+      '<div class="li eq"><span>Стоимость по проекту</span><span>' + fmtMoney(a.price) + " €</span></div></div>" +
+      '<div class="insp-sub">+ 19% VAT начисляется дополнительно.</div>' +
+      inspField("Род цены", '<select data-path="commerce.price.kind"><option value="final"' + (m.commerce.price.kind === "final" ? " selected" : "") + '>final</option><option value="estimate"' + (m.commerce.price.kind === "estimate" ? " selected" : "") + ">estimate</option></select>") +
+      inspNote("estimate добавляет в документ абзац о предварительном характере цены."));
+  }
+
+  if (insp.kind === "payments") {
+    return inspCard("Условия оплаты",
+      inspField("Предоплата, €", '<input data-path="commerce.predoplata" value="' + (m.commerce.predoplata || "") + '">') +
+      inspField("Второй платёж, €", '<input data-path="commerce.second_payment.amount" value="' + (m.commerce.second_payment.amount || "") + '">') +
+      inspField("Второй платёж — за что", '<input data-path="commerce.second_payment.note" value="' + esc(m.commerce.second_payment.note || "") + '">') +
+      inspField("Срок, значение", '<input data-path="commerce.term.value" value="' + m.commerce.term.value + '">') +
+      inspField("Срок, единица", '<select data-path="commerce.term.unit">' + ["недель", "дней", "месяцев"].map((u) => '<option' + (m.commerce.term.unit === u ? " selected" : "") + ">" + u + "</option>").join("") + "</select>") +
+      inspField("Пункт об отчётности (длинные проекты)", '<input type="checkbox" data-path="commerce.reporting"' + (m.commerce.reporting ? " checked" : "") + ">"));
+  }
+
+  if (insp.kind === "object") {
+    return inspCard("Титул и описание",
+      inspField("Подзаголовок", '<input data-path="object.subtitle" value="' + esc(m.object.subtitle) + '">') +
+      inspField("Дата", '<input data-path="object.date" value="' + esc(m.object.date) + '">') +
+      inspRow("Папка (внутренняя)", '<span class="mono">' + esc(m.object.folder) + "</span>") +
+      srcTag("Источник: карточка проекта") +
+      '<div class="insp-parts mono">' + esc(m.sources.card) + "</div>" +
+      inspNote("Открытие и поля «Объект», «Зона работ», «Материалы и транспорт» приходят из карточки; в конструкторе не редактируются."));
+  }
+
+  if (insp.kind === "workshead") {
+    return inspCard("Заголовок зоны работ",
+      inspField("Текст заголовка", '<input data-path="layout.works_heading" value="' + esc(m.layout.works_heading) + '">') +
+      inspNote("Ниже — одна таблица: 13 позиций сметы + 2 сопутствющие строки, итог на последней странице."));
+  }
+
+  if (insp.kind === "permits") {
+    return inspCard("Согласования и разрешительная документация",
+      inspRow("Состояние", a.has.permits ? "блок включён" : "блок исключён") +
+      '<div class="insp-actions"><button class="btn ghost" data-act="permits">' + (a.has.permits ? "Исключить блок" : "Включить блок") + "</button></div>" +
+      srcTag("Фиксированный блок ТЗ") + inspNote("Текст блока фиксирован; решение — только включён или исключён."));
+  }
+
+  if (insp.kind === "org") {
+    return inspCard("Организация строительного процесса",
+      inspField("Форма", '<select data-path="layout.org_process"><option value="on"' + (m.layout.org_process === "on" ? " selected" : "") + '>блок целиком</option><option value="fold"' + (m.layout.org_process === "fold" ? " selected" : "") + ">свёрнута в «В стоимость также входит»</option></select>") +
+      inspNote("Свёрнутая форма заменяет блок списком из двух пунктов после таблицы работ."));
+  }
+
+  if (insp.kind === "photos") {
+    return inspCard("Фото объекта",
+      inspField("Раздел включён", '<input type="checkbox" data-act="photos"' + (a.has.photos ? " checked" : "") + ">") +
+      inspNote(m.images.photos.length + " фото; по 3 на полосу. Выключение убирает раздел из документа."));
+  }
+
+  if (insp.kind === "notinc") {
+    return inspCard("В стоимость не входят",
+      inspField("Форма", '<select data-path="layout.not_included_form"><option value="subsections"' + (m.layout.not_included_form === "subsections" ? " selected" : "") + '>подразделы</option><option value="prose"' + (m.layout.not_included_form === "prose" ? " selected" : "") + ">строкой (форма 2635)</option></select>") +
+      srcTag("Источник: карточка проекта") + inspNote("Списки позиций (отделочные материалы, чистовая электрика и сантехника) приходят из карточки."));
+  }
+
+  if (insp.kind === "variant") {
+    const d = variantDiff();
+    return inspCard("Вариант: " + assemble(clone(m), STATE.variant).variantLabel,
+      d.lines.map((l) => '<div class="insp-row"><span></span><span>' + esc(l) + "</span></div>").join("") +
+      inspRow("Разница с базой", (d.delta > 0 ? "+" : "") + fmtMoney(d.delta) + " €") +
+      inspNote("Вариант — наложение на базовый состав: замена или исключение строк. Базовый состав не трогается."));
+  }
+
+  return inspCard("Фиксированный блок ТЗ", inspNote("Этот текст фиксирован спецификацией и в конструкторе не редактируется."));
+}
+
+/* ============================================================
+   Проверить: отчёт (машина), клик по воротам ведёт к месту в документе
+   ============================================================ */
+const GATE_ANCHOR = { 1: "#sec-works", 2: "#sec-payment", 3: "#sec-works", 6: "#sec-payment", 7: "#sec-open", 10: "#sec-photos-1" };
 
 function renderReport(a) {
   const m = STATE.manifest;
-  const gateRow = (x) => '<div class="rep-row ' + x.status + '"><span class="rep-status">' + (x.status === "pass" ? "✓" : x.status === "skip" ? "○" : "✕") + '</span><span class="rep-n">' + x.n + '</span><span class="rep-title">' + esc(x.title) + '</span><span class="rep-detail">' + esc(x.detail) + "</span></div>";
+  const gateRow = (x) => '<div class="rep-row ' + x.status + (GATE_ANCHOR[x.n] ? ' linked' : '') + '"' + (GATE_ANCHOR[x.n] ? ' data-goto="' + esc(GATE_ANCHOR[x.n]) + '"' : '') + '><span class="rep-status">' + (x.status === "pass" ? "✓" : x.status === "skip" ? "○" : "✕") + '</span><span class="rep-n">' + x.n + '</span><span class="rep-title">' + esc(x.title) + '</span><span class="rep-detail">' + esc(x.detail) + '</span></div>';
   const merged = a.aggregation.merged.map((gr) => "<div>«" + esc(gr.name) + "» " + fmtMoney(gr.price) + " €: " + gr.parts.map((p) => p.room + " " + fmtQty(p.qty)).join(" + ") + " → " + fmtQty(gr.qty) + " " + a.rows.find((r) => r.name === gr.name && r.price === gr.price).unit + "</div>").join("");
   const split = a.aggregation.keptSplit.map((gr) => "<div>«" + esc(gr.name) + "»: " + gr.prices.map((p) => fmtMoney(p) + " €").join(" | ") + " — строки остаются раздельными</div>").join("");
   const vc = a.variantChanges;
@@ -28,112 +224,28 @@ function renderReport(a) {
     '<div class="rep-card"><div class="rep-h">Арифметика</div><div class="rep-line">Итого по таблице: <b>' + fmtMoney(a.itogo) + " €</b></div>" +
     '<div class="rep-line">Сопутствующие: ' + fmtMoney(a.relTotal) + " €; черновые материалы: " + fmtMoney(a.materials) + " €</div>" +
     '<div class="rep-line">Строка цены: <b>' + fmtMoney(a.itogo) + " + " + fmtMoney(a.relTotal) + " + " + fmtMoney(a.materials) + " = " + fmtMoney(a.price) + " €</b> + 19% VAT</div></div>" +
-    '<div class="rep-card"><div class="rep-h">Блоки</div><div class="rep-line">Использованы (' + a.sections.flatMap((x) => x.blocks).length + "): " + a.sections.flatMap((x) => x.blocks).join(", ") + "</div>" +
-    '<div class="rep-line">Отключены: ' + (offBlocks(a).join(", ") || "—") + "</div></div>" +
     '<div class="rep-card gates"><div class="rep-h">Ворота 1–10</div>' + a.gates.map(gateRow).join("") + "</div>" +
     "</div>"
   );
 }
 
-function offBlocks(a) {
-  const optional = ["plans", "photos", "prelim_note", "related", "org_process", "also_included", "prelim_volumes", "not_estimated", "separate_estimate", "engineering", "permits", "gallery", "reporting"];
-  return optional.filter((b) => !a.has[b]);
-}
-
-function renderManifest() {
-  const m = STATE.manifest;
-  const f = (label, inner) => '<label class="mf-field"><span>' + label + "</span>" + inner + "</label>";
-  return (
-    '<div class="mf-grid">' +
-    '<div class="mf-card"><div class="mf-h">Объект</div>' +
-    f("Имя папки / YYNN (внутреннее)", '<input data-path="object.folder" value="' + esc(m.object.folder) + '">') +
-    f("Подзаголовок (Документ 3.4)", '<input data-path="object.subtitle" value="' + esc(m.object.subtitle) + '">') +
-    f("Дата отправки", '<input data-path="object.date" value="' + esc(m.object.date) + '">') +
-    "</div>" +
-    '<div class="mf-card"><div class="mf-h">Коммерция — значения Ивана</div>' +
-    f("Род цены", '<select data-path="commerce.price.kind"><option value="final"' + (m.commerce.price.kind === "final" ? " selected" : "") + '>final</option><option value="estimate"' + (m.commerce.price.kind === "estimate" ? " selected" : "") + ">estimate</option></select>") +
-    f("Черновые материалы, €", '<input data-path="commerce.materials" value="' + m.commerce.materials + '">') +
-    f("Предоплата, €", '<input data-path="commerce.predoplata" value="' + m.commerce.predoplata + '">') +
-    f("Второй платёж, €", '<input data-path="commerce.second_payment.amount" value="' + m.commerce.second_payment.amount + '">') +
-    f("Срок, значение", '<input data-path="commerce.term.value" value="' + m.commerce.term.value + '">') +
-    f("Срок, единица", '<select data-path="commerce.term.unit">' + ["недель", "дней", "месяцев"].map((u) => '<option' + (m.commerce.term.unit === u ? " selected" : "") + ">" + u + "</option>").join("") + "</select>") +
-    f("Пункт об отчётности (длинные проекты)", '<input type="checkbox" data-path="commerce.reporting"' + (m.commerce.reporting ? " checked" : "") + ">") +
-    "</div>" +
-    '<div class="mf-card"><div class="mf-h">Макет</div>' +
-    f("Заголовок зоны работ", '<input data-path="layout.works_heading" value="' + esc(m.layout.works_heading) + '">') +
-    f("Организация процесса", '<select data-path="layout.org_process"><option value="on"' + (m.layout.org_process === "on" ? " selected" : "") + '>блок включён</option><option value="fold"' + (m.layout.org_process === "fold" ? " selected" : "") + ">свёрнута → «В стоимость также входит»</option></select>") +
-    f("Форма «В стоимость не входят»", '<select data-path="layout.not_included_form"><option value="subsections"' + (m.layout.not_included_form === "subsections" ? " selected" : "") + '>подразделы</option><option value="prose"' + (m.layout.not_included_form === "prose" ? " selected" : "") + ">строкой (форма 2635)</option></select>") +
-    f("Фото объекта", '<input type="checkbox" data-path="toggle-photos"' + (!m.layout.omit.includes("photos") ? " checked" : "") + ">") +
-    f("Блок согласований (решение 3)", '<input type="checkbox" data-path="layout.permits"' + (m.layout.permits ? " checked" : "") + ">") +
-    "</div>" +
-    '<div class="mf-card"><div class="mf-h">Решения ТЗ</div>' +
-    f("1. Бренд", '<select data-path="layout.brand"><option' + (m.layout.brand === "MELESHIN LTD" ? " selected" : "") + '>MELESHIN LTD</option><option' + (m.layout.brand === "MELESHIN Group" ? " selected" : "") + ">MELESHIN Group</option></select>") +
-    f("2. Язык ЛК клиента (админ-тумблер)", '<select data-path="object.language"><option value="ru"' + (m.object.language === "ru" ? " selected" : "") + '>ru — кабинет на русском</option><option value="en" disabled>en [ ] — решение 2 ТЗ</option></select>') +
-    f("4. Менеджер", '<input value="снизу — решение закрыто 01.10" disabled>') +
-    f("5. Срок действия", '<input value="14 дней — фиксированная строка" disabled>') +
-    "</div>" +
-    '<div class="mf-card mf-wide"><div class="mf-h">Манифест (ТЗ) — указатели на источники</div><pre class="mf-pre">object:    { folder: ' + esc(m.object.folder) + ', language: ' + m.object.language + ", date: " + esc(m.object.date) + " }\n" +
-    "sources:\n  card:     " + esc(m.sources.card) + "\n  estimate: " + esc(m.sources.estimate) + "\n" +
-    "images:   { hero, plans: [" + m.images.plans.length + "], photos: [" + m.images.photos.length + "], gallery: [" + m.images.gallery.length + "] }\n" +
-    "commerce: { price: { kind: " + m.commerce.price.kind + " }, materials: " + fmtMoney(m.commerce.materials) + ",\n            payments: [предоплата " + fmtMoney(m.commerce.predoplata) + ", второй " + fmtMoney(m.commerce.second_payment.amount) + "], term: " + m.commerce.term.value + " " + esc(m.commerce.term.unit) + " }\n" +
-    "layout:   { omit: [" + esc(m.layout.omit.join(", ")) + "], org_process: " + m.layout.org_process + ", related_table: " + m.layout.related_table + " }\n" +
-    "variants: { penoplex, no-insulation }   # наложение на базовый состав</pre>" +
-    '<div class="mf-actions"><button class="btn ghost" id="btn-reset">Сбросить манифест</button></div></div>' +
-    "</div>"
-  );
-}
-
 /* ============================================================
-   Каркас: шапка, герой, сайдбар, тулбар
+   Отправить: статус и публикация (в демо — push published.json)
    ============================================================ */
-const BLOCK_REGISTRY = [
-  ["chrome", "Marp-обвязка: шапка + подвал"], ["manager", "Менеджер + телефон + дата"], ["title", "Коммерческое предложение"],
-  ["subtitle", "Подзаголовок"], ["description", "Описание проекта"], ["plans", "План этажа"], ["photos", "Фото объекта"],
-  ["works_head", "Заголовок зоны работ"], ["works_table", "Таблица работ + Итого"], ["prelim_note", "Предварительный характер"],
-  ["related", "Проектные сопутствующие работы"], ["org_process", "Организация строительного процесса"], ["also_included", "В стоимость также входит"],
-  ["prelim_volumes", "Объёмы определены предварительно"], ["not_estimated", "В оценку не вошло"], ["not_included", "В стоимость не входят"],
-  ["separate_estimate", "Отдельной сметой"], ["engineering", "Инженерные работы"], ["permits", "Согласования и разрешения"],
-  ["interaction", "Формат взаимодействия"], ["payment", "Условия оплаты a–h"], ["gallery", "Финальная галерея"],
-];
-const BLOCK_ANCHOR = { chrome: "sec-open", manager: "doc-manager-bottom", title: "sec-open", subtitle: "sec-open", description: "sec-open", plans: "sec-plans", photos: "sec-photos-1", works_head: "sec-works", works_table: "sec-works", prelim_note: "sec-works", related: "sec-works", org_process: "sec-post", also_included: "sec-post", prelim_volumes: "sec-post", not_estimated: "sec-post", not_included: "sec-notinc", separate_estimate: "sec-notinc", engineering: "sec-notinc", permits: "sec-interaction", interaction: "sec-interaction", payment: "sec-payment", gallery: "sec-gallery" };
-
-function renderSide(a) {
+function renderSend(a) {
   const m = STATE.manifest;
-  const present = new Set(a.sections.flatMap((x) => x.blocks));
-  const variants = Object.entries(m.variants).map(([k, v]) => {
-    const active = STATE.variant === k;
-    const note = k === "base" ? "база" : k === "penoplex" ? "замена 1 строки" : "минус 1 строка";
-    return '<div class="item' + (active ? " active" : "") + '" data-variant="' + k + '"><span class="name">' + v.label + "</span>" + '<span class="c">' + note + "</span></div>";
-  }).join("");
-  const blocks = BLOCK_REGISTRY.map(([id, title]) => {
-    const on = present.has(id);
-    const optional = ["plans", "photos", "prelim_note", "related", "org_process", "also_included", "prelim_volumes", "not_estimated", "separate_estimate", "engineering", "permits", "gallery"].includes(id);
-    const mark = on ? "•" : optional ? "—" : "○";
-    return '<div class="item bl' + (on ? " active" : "") + '" data-block="' + BLOCK_ANCHOR[id] + '" title="' + esc(title) + '"><span class="name">' + id + "</span>" + '<span class="c">' + mark + "</span></div>";
-  }).join("");
-  return (
-    '<div class="group"><div class="h"><span>Вариант</span></div>' + variants + "</div>" +
-    '<div class="group"><div class="h"><span>Блоки документа</span><span class="c">' + present.size + '/22</span></div>' + blocks + "</div>" +
-    '<div class="group"><div class="h"><span>Решения ТЗ</span></div>' +
-    '<div class="item" data-decision="brand"><span class="name">1. Бренд</span><span class="c">' + (m.layout.brand === "MELESHIN LTD" ? "LTD" : "Group") + "</span></div>" +
-    '<div class="item"><span class="name">2. en-профиль</span><span class="c">[ ]</span></div>' +
-    '<div class="item" data-decision="permits"><span class="name">3. permits</span><span class="c">' + (m.layout.permits ? "вкл" : "выкл") + "</span></div>" +
-    '<div class="item"><span class="name">4. Менеджер</span><span class="c">снизу</span></div>' +
-    '<div class="item"><span class="name">5. Срок действия</span><span class="c">14 дней</span></div>' +
-    "</div>"
-  );
-}
-
-function renderToolbar(a) {
-  const views = [["doc", "Документ"], ["md", "Маркдаун"], ["manifest", "Конструктор"], ["report", "Отчёт"]];
-  return (
-    '<div class="d3-toolbar"><div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="doc-search" placeholder="Поиск по позициям…" value="' + esc(STATE.search) + '"' + (STATE.view === "doc" ? "" : " disabled") + "></div>" +
-    '<div class="view-toggle">' + views.map(([k, label]) => '<button data-view="' + k + '"' + (STATE.view === k ? ' class="active"' : "") + ">" + label + "</button>").join("") + "</div></div>"
-  );
+  return '<div class="rep-grid send-grid">' +
+    '<div class="rep-card"><div class="rep-h">Статус</div>' +
+    '<div class="rep-line"><span class="status-pill ' + (STATE.status === "agreed" ? "success" : "warn") + '"><span class="dot"></span><span>' + (STATE.status === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + '</span><span>' + esc(m.object.date) + "</span></span></div>" +
+    '<div class="insp-actions"><button class="btn ghost" data-status="sent">Отметить «Отправлен»</button><button class="btn ghost" data-status="agreed">Отметить «Согласован с клиентом»</button></div></div>' +
+    '<div class="rep-card"><div class="rep-h">Публикация</div><div class="rep-line">В демо публикация — push файла published.json в репозиторий админки; ЛК клиента грузит его по умолчанию.</div>' +
+    '<div class="rep-line">Текущее состояние конструктора клиент увидит через «Предпросмотр ЛК» — без публикации, в адресе страницы.</div>' +
+    '<div class="insp-actions"><button class="btn primary" data-act="preview">Предпросмотр ЛК клиента ↗</button></div></div>' +
+    "</div>";
 }
 
 /* ============================================================
-   События админки
+   События
    ============================================================ */
 function setPath(obj, path, value) {
   const parts = path.split(".");
@@ -144,75 +256,88 @@ function setPath(obj, path, value) {
   else o[key] = value;
 }
 
+// Клик по документу → инспектор источника (ТЗ §2)
+function resolveInsp(a, e) {
+  const t = e.target;
+  if (!t.closest) return null;
+  const roomBtn = t.closest("[data-room]");
+  if (roomBtn) return { room: roomBtn.dataset.room };
+  if (t.closest(".bp-total-row")) return { kind: "total" };
+  const tr = t.closest(".bp-table-print tbody tr");
+  if (tr && !tr.classList.contains("bp-total-row")) return { kind: "work", i: [...tr.parentNode.children].indexOf(tr) };
+  if (t.closest(".doc-price")) return { kind: "price" };
+  const sec = t.closest("section");
+  if (!sec) return null;
+  const id = sec.id;
+  if (id === "sec-works" && t.closest(".doc-h2")) return { kind: "workshead" };
+  if (id === "sec-open") return { kind: "object" };
+  if (id.startsWith("sec-photos")) return { kind: "photos" };
+  if (id === "sec-post" && t.closest(".doc-h3")) return { kind: "org" };
+  if (id === "sec-payment") return { kind: "payments" };
+  if (id === "sec-notinc") return { kind: "notinc" };
+  if (id === "sec-interaction" && a.has.permits && t.closest(".doc-h2") === sec.querySelectorAll(".doc-h2")[0]) return { kind: "permits" };
+  return { kind: "fixed" };
+}
+
+function renderAll() {
+  const a = build();
+  document.getElementById("build-bar").innerHTML = renderBar(a);
+  const main3 = document.getElementById("main3");
+  main3.classList.toggle("only-doc", STATE.view !== "build");
+  document.getElementById("rail").innerHTML = STATE.view === "build" ? renderRail(a) : "";
+  const docwrap = document.getElementById("docwrap");
+  if (STATE.view === "build") docwrap.innerHTML = '<div class="doc-frame">' + renderDoc(a, { flow: true }) + "</div>";
+  else if (STATE.view === "check") docwrap.innerHTML = renderReport(a);
+  else docwrap.innerHTML = renderSend(a);
+  document.getElementById("inspector").innerHTML = STATE.view === "build" ? renderInspector(a) : "";
+  wire(a);
+}
+
 function wire(a) {
-  const root = document.getElementById("content");
-  root.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { STATE.view = b.dataset.view; renderAllAdmin(); }));
-  root.querySelectorAll("[data-variant]").forEach((b) => b.addEventListener("click", () => { STATE.variant = b.dataset.variant; renderAllAdmin(); renderSummary(build()); }));
-  root.querySelectorAll("[data-block]").forEach((b) => b.addEventListener("click", () => {
-    STATE.view = "doc";
-    renderAllAdmin();
-    const el = document.getElementById(b.dataset.block);
+  const root = document;   // табы и режимы живут в build-bar, прочее — в main3: вешаем со документа
+  root.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { STATE.view = b.dataset.view; STATE.insp = null; renderAll(); }));
+  root.querySelectorAll("[data-variant]").forEach((b) => b.addEventListener("click", () => { STATE.variant = b.dataset.variant; STATE.insp = { kind: "variant" }; renderAll(); }));
+  root.querySelectorAll("[data-insp-variant]").forEach((b) => b.addEventListener("click", () => { STATE.insp = { kind: "variant" }; renderAll(); }));
+  root.querySelectorAll(".rail-item").forEach((b) => b.addEventListener("click", () => {
+    const el = document.querySelector(b.dataset.sel) || (b.dataset.selFb && document.querySelector(b.dataset.selFb));
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
-  root.querySelectorAll("[data-decision]").forEach((b) => b.addEventListener("click", () => {
-    const d = b.dataset.decision;
-    if (d === "brand") STATE.manifest.layout.brand = STATE.manifest.layout.brand === "MELESHIN LTD" ? "MELESHIN Group" : "MELESHIN LTD";
-    if (d === "permits") STATE.manifest.layout.permits = !STATE.manifest.layout.permits;
-    renderAllAdmin();
-    renderSummary(build());
+  root.querySelectorAll("[data-goto]").forEach((b) => b.addEventListener("click", () => {
+    STATE.view = "build"; STATE.insp = null; renderAll();
+    const el = document.querySelector(b.dataset.goto);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
-  const search = root.querySelector("#doc-search");
-  if (search) search.addEventListener("input", () => {
-    STATE.search = search.value;
-    if (!STATE.search.trim()) { renderAllAdmin(); return; }   // пустой поиск — вернуть постраничную сборку
-    const pages = [...document.querySelectorAll('section[id^="sec-works"]')];
-    if (pages.length) {
-      const tmp = document.createElement("div");
-      tmp.innerHTML = '<section class="doc-slide" id="sec-works"><div class="doc-h2">' + esc(STATE.manifest.layout.works_heading) + "</div>" + renderWorksTable(build()) + "</section>";
-      pages[0].replaceWith(tmp.firstElementChild);
-      pages.slice(1).forEach((el) => el.remove());
-    } else renderAllAdmin();
-  });
-  root.querySelectorAll(".mf-field input[data-path], .mf-field select[data-path]").forEach((inp) => inp.addEventListener("change", () => {
-    const p = inp.dataset.path;
-    if (p === "toggle-photos") {
-      const om = STATE.manifest.layout.omit;
-      const i = om.indexOf("photos");
-      if (inp.checked && i >= 0) om.splice(i, 1);
-      if (!inp.checked && i < 0) om.push("photos");
-    } else setPath(STATE.manifest, p, inp.type === "checkbox" ? inp.checked : inp.value);
-    renderAllAdmin();
-    renderSummary(build());
+  root.querySelectorAll("[data-path]").forEach((inp) => inp.addEventListener("change", () => {
+    setPath(STATE.manifest, inp.dataset.path, inp.type === "checkbox" ? inp.checked : inp.value);
+    renderAll();
   }));
-  const reset = document.getElementById("btn-reset");
-  if (reset) reset.addEventListener("click", () => { STATE.manifest = clone(MANIFEST_DEFAULT); STATE.variant = "base"; renderAllAdmin(); renderSummary(build()); });
-  const pv = document.getElementById("btn-preview");
-  if (pv) pv.addEventListener("click", previewClient);
+  root.querySelectorAll("button[data-act]").forEach((b) => b.addEventListener("click", () => {
+    const act = b.dataset.act;
+    if (act === "reset") { STATE.manifest = clone(MANIFEST_DEFAULT); STATE.variant = "base"; STATE.insp = null; }
+    if (act === "permits") STATE.manifest.layout.permits = !STATE.manifest.layout.permits;
+    if (act === "preview") { previewClient(); return; }
+    renderAll();
+  }));
+  root.querySelectorAll("input[data-act='photos']").forEach((inp) => inp.addEventListener("change", () => {
+    const om = STATE.manifest.layout.omit;
+    const i = om.indexOf("photos");
+    if (inp.checked && i >= 0) om.splice(i, 1);
+    if (!inp.checked && i < 0) om.push("photos");
+    renderAll();
+  }));
+  root.querySelectorAll("[data-status]").forEach((b) => b.addEventListener("click", () => { STATE.status = b.dataset.status; renderAll(); }));
+  docwrapClick(a);
 }
 
-/* ============================================================
-   Запуск админки
-   ============================================================ */
-function renderAllAdmin() {
-  const a = build();
-  document.getElementById("side").innerHTML = renderSide(a);
-  let viewHtml;
-  if (STATE.view === "doc") viewHtml = renderDoc(a);
-  else if (STATE.view === "md") viewHtml = renderMd(a);
-  else if (STATE.view === "manifest") viewHtml = renderManifest();
-  else viewHtml = renderReport(a);
-  document.getElementById("content").innerHTML = renderToolbar(a) + '<div id="view" class="view-' + STATE.view + '">' + viewHtml + "</div>";
-  wire(a);
-  return a;
-}
-
-// Сводка шапки: объект, вариант, цена, ворота — числа из той же сборки (калькулятор)
-function renderSummary(a) {
-  const el = document.getElementById("sum-line");
-  if (!el) return;
-  el.innerHTML = esc(STATE.manifest.object.field_object) + "; вариант: " + a.variantLabel +
-    '; цена: <b class="tnum">' + fmtMoney(a.price) + " €</b> + 19% VAT; ворота: " + a.gatesPassed + "/" + a.gatesTotal +
-    '; <span class="mono">' + a.filename + "</span>";
+function docwrapClick(a) {
+  const el = document.getElementById("docwrap");
+  el.onclick = (e) => {
+    const r = resolveInsp(a, e);
+    if (!r) return;
+    if (r.room) { STATE.room = r.room; STATE.insp = null; renderAll(); return; }
+    STATE.insp = r;
+    document.getElementById("inspector").innerHTML = renderInspector(a);
+  };
 }
 
 // Предпросмотр ЛК: текущее состояние конструктора уходит в адрес клиентской страницы
@@ -222,7 +347,4 @@ function previewClient() {
   window.open(CLIENT_URL + "#preview=" + b64, "_blank");
 }
 
-if (document.getElementById("content")) {
-  renderAllAdmin();
-  renderSummary(build());
-}
+if (document.getElementById("docwrap")) renderAll();

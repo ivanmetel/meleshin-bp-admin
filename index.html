@@ -7,14 +7,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=12">
+<link rel="stylesheet" href="styles.css?v=14">
 </head>
 <body>
 
 <div class="page">
   <div class="sim-banner">
-    <strong>Демо админки.</strong> Операционная часть машины сборки КП (ТЗ "BP auto-assembly", 30.09): конструктор → машина → документ.
-    Объект 2699-Limassol-Apartment и все суммы вымышлены. Правки манифеста живут в памяти страницы до перезагрузки.
+    <strong>Демо админки.</strong> Конструктор «Собрать» (ТЗ Админка, 02.10): документ с видимым происхождением —
+    клик по элементу показывает источник. Объект 2699-Limassol-Apartment и все суммы вымышлены.
+    Правки манифеста живут в памяти страницы до перезагрузки.
   </div>
 
   <div class="app">
@@ -30,11 +31,12 @@
       </div>
     </div>
 
-    <div class="sum-line" id="sum-line"></div>
+    <div class="build-bar" id="build-bar"></div>
 
-    <div class="d3-main">
-      <aside class="d3-side" id="side"></aside>
-      <main class="d3-content" id="content"></main>
+    <div class="main3" id="main3">
+      <aside class="rail" id="rail"></aside>
+      <main class="docwrap" id="docwrap"></main>
+      <aside class="inspector" id="inspector"></aside>
     </div>
   </div>
 
@@ -44,8 +46,8 @@
   </div>
 </div>
 
-<script src="data.js?v=20"></script>
-<script src="engine.js?v=33"></script>
-<script src="admin.js?v=3"></script>
+<script src="data.js?v=21"></script>
+<script src="engine.js?v=34"></script>
+<script src="admin.js?v=5"></script>
 </body>
 </html>
