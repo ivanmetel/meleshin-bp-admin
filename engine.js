@@ -767,7 +767,8 @@ function renderHero(a) {
   // кабинет под героем — одна вкладка КП, навигация по помещениям в рейле.
   return (
     '<div class="d3-hero"><div class="gallery"><img src="' + m.images.hero + '" alt="">' +
-    '<div class="ribbon"><span class="status-pill ' + (st === "agreed" ? "success" : "warn") + '"><span class="dot"></span>' + (st === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + " · " + esc(m.object.date) + '</span><span class="status-pill edition">Вариант: ' + a.variantLabel + "</span></div></div>" +
+    // Дата — отдельным спаном с отбивкой: знак «·» как разделитель не используется (Иван 02.10)
+    '<div class="ribbon"><span class="status-pill ' + (st === "agreed" ? "success" : "warn") + '"><span class="dot"></span><span>' + (st === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + '</span><span>' + esc(m.object.date) + '</span></span><span class="status-pill edition">Вариант: ' + a.variantLabel + "</span></div></div>" +
     // Без ярлыка «Коммерческое предложение» (Иван 02.10, раунд): документ
     // называет себя один раз — титульным блоком в карточке; герой несёт
     // подзаголовок, адрес и цену.
