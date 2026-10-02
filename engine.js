@@ -625,14 +625,11 @@ function renderDoc(a, opts) {
         (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
       // Настоящая <table> — одна и та же в карточке КП и в PDF (что клиент
       // читает, то и сохраняет); при выходе за страницу печати шапку
-      // повторяет браузер. Ширины колонок — фиксированные пиксели по максимуму
-      // роли + паддинг ячейки 20 + запас 2 (замер 12 px Inter — кегль таблицы,
-      // 02.10): # 38 («99» = 15,6); Ед. 62 («компл.» = 39,9); Кол-во 76
-      // («9 999,99» = 53,1); Цена за ед., € 105 (заголовок = 82,5);
-      // Стоимость, € 103 (заголовок = 80,7). Имя забирает остаток 304;
-      // карточка = печатной полосе 688 px, поэтому одни и те же px служат
-      // экрану и печати (Иван 02.10 — «про ширину таблицы»).
-      const printTable = (rows, total) => '<table class="bp-table-print"><colgroup><col style="width:38px"><col><col style="width:62px"><col style="width:76px"><col style="width:105px"><col style="width:103px"></colgroup><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
+      // повторяет браузер. Ширины колонок назначил Иван (02.10, verbatim):
+      // # 25; Ед. 55; Кол-во 65; Цена за ед., € 100; Стоимость, € 100;
+      // имя забирает остаток 343. Карточка = печатной полосе 688 px, поэтому
+      // одни и те же px служат экрану и печати.
+      const printTable = (rows, total) => '<table class="bp-table-print"><colgroup><col style="width:25px"><col><col style="width:55px"><col style="width:65px"><col style="width:100px"><col style="width:100px"></colgroup><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
         rows.map((r) => '<tr><td class="num">' + r.n + '</td><td class="work">' + esc(r.name) + '</td><td class="unit">' + esc(r.unit) + '</td><td class="qty tnum">' + fmtQty(r.qty) + '</td><td class="price tnum">' + fmtMoney(r.price) + '</td><td class="sum tnum">' + fmtMoney(r.cost) + "</td></tr>").join("") +
         // итог — строка tbody: tfoot в печати повторяется на каждой странице
         '<tr class="bp-total-row"><td colspan="6"><div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(total) + " €</span></div></td></tr></tbody></table>";
