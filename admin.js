@@ -21,12 +21,12 @@ function renderReport(a) {
   return (
     '<div class="rep-grid">' +
     '<div class="rep-card"><div class="rep-h">Сборка</div><div class="rep-line">Файл: <b>' + a.filename + "</b></div>" +
-    '<div class="rep-line">Слайдов: ' + (a.sections.length + a.worksPages.length - 1) + " · строк таблицы: " + a.docRows.length + " · страницы таблицы: " + a.worksPages.length + " (по 12 строк, шапка повторяется, итог — на последней)</div>" +
-    '<div class="rep-line">Вариант: ' + a.variantLabel + (vc.replaced.length ? " · заменено строк: " + vc.replaced.length : "") + (vc.dropped.length ? " · исключено строк: " + vc.dropped.length : "") + "</div>" +
+    '<div class="rep-line">Слайдов: ' + (a.sections.length + a.worksPages.length - 1) + "; строк таблицы: " + a.docRows.length + "; страницы таблицы: " + a.worksPages.length + " (по 12 строк, шапка повторяется, итог — на последней)</div>" +
+    '<div class="rep-line">Вариант: ' + a.variantLabel + (vc.replaced.length ? "; заменено строк: " + vc.replaced.length : "") + (vc.dropped.length ? "; исключено строк: " + vc.dropped.length : "") + "</div>" +
     '<div class="rep-line">Источники: карточка <span class="mono">' + esc(m.sources.card) + "</span>; смета — " + esc(m.sources.estimate) + "</div></div>" +
     '<div class="rep-card"><div class="rep-h">Агрегация</div>' + (merged || "<div>склеек нет</div>") + (split ? '<div class="rep-sub">Не склеено — одна работа, разные цены:</div>' + split : "") + "</div>" +
     '<div class="rep-card"><div class="rep-h">Арифметика</div><div class="rep-line">Итого по таблице: <b>' + fmtMoney(a.itogo) + " €</b></div>" +
-    '<div class="rep-line">Сопутствующие: ' + fmtMoney(a.relTotal) + " € · черновые материалы: " + fmtMoney(a.materials) + " €</div>" +
+    '<div class="rep-line">Сопутствующие: ' + fmtMoney(a.relTotal) + " €; черновые материалы: " + fmtMoney(a.materials) + " €</div>" +
     '<div class="rep-line">Строка цены: <b>' + fmtMoney(a.itogo) + " + " + fmtMoney(a.relTotal) + " + " + fmtMoney(a.materials) + " = " + fmtMoney(a.price) + " €</b> + 19% VAT</div></div>" +
     '<div class="rep-card"><div class="rep-h">Блоки</div><div class="rep-line">Использованы (' + a.sections.flatMap((x) => x.blocks).length + "): " + a.sections.flatMap((x) => x.blocks).join(", ") + "</div>" +
     '<div class="rep-line">Отключены: ' + (offBlocks(a).join(", ") || "—") + "</div></div>" +
@@ -115,11 +115,11 @@ function renderSide(a) {
     '<div class="group"><div class="h"><span>Вариант</span></div>' + variants + "</div>" +
     '<div class="group"><div class="h"><span>Блоки документа</span><span class="c">' + present.size + '/22</span></div>' + blocks + "</div>" +
     '<div class="group"><div class="h"><span>Решения ТЗ</span></div>' +
-    '<div class="item" data-decision="brand"><span class="name">1 · Бренд</span><span class="c">' + (m.layout.brand === "MELESHIN LTD" ? "LTD" : "Group") + "</span></div>" +
-    '<div class="item"><span class="name">2 · en-профиль</span><span class="c">[ ]</span></div>' +
-    '<div class="item" data-decision="permits"><span class="name">3 · permits</span><span class="c">' + (m.layout.permits ? "вкл" : "выкл") + "</span></div>" +
-    '<div class="item"><span class="name">4 · Менеджер</span><span class="c">снизу</span></div>' +
-    '<div class="item"><span class="name">5 · Срок действия</span><span class="c">14 дней</span></div>' +
+    '<div class="item" data-decision="brand"><span class="name">1. Бренд</span><span class="c">' + (m.layout.brand === "MELESHIN LTD" ? "LTD" : "Group") + "</span></div>" +
+    '<div class="item"><span class="name">2. en-профиль</span><span class="c">[ ]</span></div>' +
+    '<div class="item" data-decision="permits"><span class="name">3. permits</span><span class="c">' + (m.layout.permits ? "вкл" : "выкл") + "</span></div>" +
+    '<div class="item"><span class="name">4. Менеджер</span><span class="c">снизу</span></div>' +
+    '<div class="item"><span class="name">5. Срок действия</span><span class="c">14 дней</span></div>' +
     "</div>"
   );
 }
@@ -206,13 +206,13 @@ function renderAllAdmin() {
   return a;
 }
 
-// Сводка шапки: объект · вариант · цена · ворота — числа из той же сборки (калькулятор)
+// Сводка шапки: объект, вариант, цена, ворота — числа из той же сборки (калькулятор)
 function renderSummary(a) {
   const el = document.getElementById("sum-line");
   if (!el) return;
-  el.innerHTML = esc(STATE.manifest.object.field_object) + " · вариант: " + a.variantLabel +
-    ' · цена: <b class="tnum">' + fmtMoney(a.price) + " €</b> + 19% VAT · ворота: " + a.gatesPassed + "/" + a.gatesTotal +
-    ' · <span class="mono">' + a.filename + "</span>";
+  el.innerHTML = esc(STATE.manifest.object.field_object) + "; вариант: " + a.variantLabel +
+    '; цена: <b class="tnum">' + fmtMoney(a.price) + " €</b> + 19% VAT; ворота: " + a.gatesPassed + "/" + a.gatesTotal +
+    '; <span class="mono">' + a.filename + "</span>";
 }
 
 // Предпросмотр ЛК: текущее состояние конструктора уходит в адрес клиентской страницы
