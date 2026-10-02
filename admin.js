@@ -223,7 +223,6 @@ function previewClient() {
 }
 
 if (document.getElementById("content")) {
-  if (STATE.view === "estimate") STATE.view = "doc";   // «Смета» — экран ЛК клиента
   renderAllAdmin();
   renderSummary(build());
 }

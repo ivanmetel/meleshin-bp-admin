@@ -496,9 +496,8 @@ function repetitionScan(a, manifest) {
 const STATE = {
   manifest: clone(MANIFEST_DEFAULT),
   variant: "base",
-  view: "estimate", // смета (клиент) | документ | маркдаун | манифест | отчёт
-  works: true, materials: true, // экраны сметы: Работы / Материалы — нажаты по одной или обе
-  room: "all", // помещения сметы (навигация слева)
+  view: "doc", // вид админки: документ | маркдаун | манифест | отчёт (ЛК клиента v2 вида не использует — одна вкладка КП)
+  room: "all", // ЛК v2: выбор помещения фильтрует таблицу работ в документе
   status: "sent", // Отправлен | Согласован с клиентом (ТЗ Клиентская смета, 4)
   search: "",
   prev: null,
@@ -514,36 +513,17 @@ function build() {
 }
 
 /* ============================================================
-   Клиентская смета: экраны работы/материалы + помещения
-   (структура клиентского бюджета: сверху экраны, слева помещения)
+   ЛК клиента v2 (Иван 02.10): одна вкладка — КП. Экраны сметы умерли
+   (Работы/Материалы), документ КП занимает вкладку целиком; рейл
+   «Помещение» фильтрует таблицу работ внутри документа; печать —
+   всегда полный документ (ТЗ tz/bp/2026-10-02-tz-bp-client-v2.md).
    ============================================================ */
 
-// Модель сметы: агрегированные строки работ (та же агреграция машины),
-// агрегированные материалы, помещения с подсчётом по зонам.
-function estimateModel(a) {
-  const mAgg = aggregate(MATERIALS_ROWS);
-  const materialsRows = mAgg.rows.map((r, i) => ({ n: i + 1, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: r.cost, parts: r.parts }));
-  const materialsTotal = round2(materialsRows.reduce((s, r) => s + r.cost, 0));
-  const names = [];
-  ESTIMATE_ROWS.forEach((r) => { if (r.room && !names.includes(r.room)) names.push(r.room); });
-  MATERIALS_ROWS.forEach((r) => { if (r.room && !names.includes(r.room)) names.push(r.room); });
-  const rooms = names.map((z) => {
-    let wc = 0;
-    let mc = 0;
-    let sum = 0;
-    a.rows.forEach((r) => r.parts.forEach((p) => { if (p.room === z) { wc++; sum = round2(sum + round2(p.qty * r.price)); } }));
-    mAgg.rows.forEach((r) => r.parts.forEach((p) => { if (p.room === z) mc++; }));
-    return { name: z, wc, mc, sum };
-  });
-  return { materialsRows, materialsTotal, rooms };
-}
-
-// Встроенный калькулятор: экран показывает позиции сметы, и каждое число считается
-// из видимых строк — каунтер считает строки таблицы, итог блока суммирует их.
-// Одинаковые имя+цена — одна строка: объёмы суммируются, порядок — первое появление
-// в источнике (то же правило, что в таблице документа КП). «Все» — одна таблица:
-// позиции, затем сопутствующие ед. мес. последними строками (в каунтеры не входят);
-// помещение — свои строки. Нумерация всегда с 1.
+// Встроенный калькулятор (канон 01.10): каждое число экрана — арифметика
+// по видимым строкам. Одинаковые имя+цена — одна строка: объёмы
+// суммируются, порядок — первое появление в источнике (то же правило,
+// что в таблице документа КП). Сопутствующие ед. мес. — без помещения,
+// показываются только в «Все»; нумерация вида — с 1.
 function mergeByName(list) {
   const map = new Map();
   list.forEach((r) => {
@@ -553,75 +533,38 @@ function mergeByName(list) {
   });
   return [...map.values()];
 }
-function estimateRows(src, room, related) {
-  const pos = (r, n) => ({ n, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) });
-  const base = room === "all" ? mergeByName(src) : mergeByName(src.filter((r) => r.room === room));
-  const extra = room === "all" ? mergeByName(related) : [];
-  return base.concat(extra).map((r, i) => pos(r, i + 1));
-}
 
-// Навигация сметы (Иван 01.10, правка того же дня): экраны «Условия» / «Работы» /
-// «Материалы» уехали из левой колонки в героя — под «Стоимость по проекту»; слева
-// осталось только «Помещение» и список помещений (фильтр таблиц; клик по помещению
-// в «Условиях» возвращает к таблицам). Каунтер = строки таблицы этого экрана после
-// схлопывания одинаковых имя+цена (сопутствующие ед. мес. — последние строки
-// таблицы, в каунтеры не входят); каунтеры видны только при одном экране.
-function estimateTables(a) {
-  const room = STATE.room;
-  const relRaw = FIXED.related_rows.map((r) => ({ name: r.name, unit: r.unit, qty: r.qty, price: r.price }));
-  const related = STATE.manifest.layout.related_table === "separate" ? relRaw : [];
+// Рейл «Помещение» (Иван 02.10): комнаты источника работ + счётчик строк
+// после схлопывания одинаковых имя+цена (каунтер считает строки таблицы
+// этого помещения; каунтеры материалов умерли вместе с экраном).
+function roomModel(a) {
   const vRows = applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows;
+  const names = [];
+  vRows.forEach((r) => { if (r.room && !names.includes(r.room)) names.push(r.room); });
   return {
-    room,
-    vRows,
-    worksRows: estimateRows(vRows, room, related),
-    matRows: estimateRows(MATERIALS_ROWS, room, []),
-    count: (screen, rm) => estimateRows(screen === "works" ? vRows : MATERIALS_ROWS, rm, []).length,
+    rooms: names.map((rm) => ({ name: rm, count: mergeByName(vRows.filter((r) => r.room === rm)).length })),
+    all: mergeByName(vRows).length,
   };
 }
 
-// Рейл помещений (Иван 01.10): только «Помещение» и комнаты — экраны уехали
-// в героя (renderHero). Решётка: заголовок 44 = полоса названия блока, отступ 36 =
-// полоса шапки таблицы, комнаты 40 = строки таблицы.
 function renderRail(a) {
-  const em = estimateModel(a);
-  const t = estimateTables(a);
-  const one = STATE.view !== "conditions" && STATE.works !== STATE.materials;
-  const cnt = (n) => (one ? '<span class="c">' + n + "</span>" : "");
-  const pick = (rm) => t.count(STATE.works ? "works" : "materials", rm);
-  const act = (x) => (STATE.view === "estimate" && t.room === x ? ' class="active"' : "");
+  const rm = roomModel(a);
+  const act = (x) => (STATE.room === x ? ' class="active"' : "");
   return '<div class="est-rooms"><div class="est-rooms-h">Помещение</div>' +
-    '<button data-room="all"' + act("all") + '><span>Все</span>' + cnt(pick("all")) + "</button>" +
-    em.rooms.map((r) => '<button data-room="' + esc(r.name) + '"' + act(r.name) + '><span>' + esc(r.name) + "</span>" + cnt(pick(r.name)) + "</button>").join("") + "</div>";
+    '<button data-room="all"' + act("all") + '><span>Все</span><span class="c">' + rm.all + "</span></button>" +
+    rm.rooms.map((r) => '<button data-room="' + esc(r.name) + '"' + act(r.name) + '><span>' + esc(r.name) + '</span><span class="c">' + r.count + "</span></button>").join("") + "</div>";
 }
 
-// Панель сметы: две таблицы канона («Строительно-монтажные, отделочные и сопутствующие
-// работы» — позиции + сопутствующие последними строками; «Материалы» — черновые, в
-// стоимости) в тёмной панели; итоги сходятся к «Стоимость по проекту».
-// «Условия» (Иван 01.10) — экран той же панели, каркас не меняется: та же тёмная
-// панель, та же полоса названия; в ней — документ КП в читаемом веб-виде, без
-// листов А4 и без слова «предпросмотр»; «Сохранить PDF» (А4) — внизу, после подписи.
+// Вкладка КП (Иван 02.10): тёмная панель с полосой названия — каркас канона
+// сметы; внутри — документ КП читаемой веб-карточкой (без листов А4 и без
+// слова «предпросмотр»), «Сохранить PDF» — после подписи и контактной строки.
+// Печать собирается от манифеста — выбор помещения на экране в PDF не попадает.
 function renderPanel(a) {
-  if (STATE.view === "conditions") {
-    return '<div class="panel-dark single"><div class="est-blk">' +
-      '<div class="blk-head"><span class="blk-name">Коммерческое предложение</span></div>' +
-      renderDoc(a, { flow: true }) +
-      '<div class="doc-save"><button class="btn ghost" id="btn-pdf">Сохранить PDF</button></div>' +
-      "</div></div>";
-  }
-  const t = estimateTables(a);
-  const rowHtml = (r) => '<div class="est-row"><div class="num">' + r.n + '</div><div class="name">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="cost tnum">' + fmtMoney(r.cost) + "</div></div>";
-  const head = (kind) => '<div class="est-head"><div>#</div><div>' + (kind === "w" ? "Работа" : "Материал") + '</div><div>Ед.</div><div class="r">Кол&#8209;во</div><div class="r">Цена за ед., €</div><div class="r">Стоимость, €</div></div>';
-  const block = (title, rows, kind) => {
-    const total = round2(rows.reduce((s, r) => s + r.cost, 0));
-    return '<div class="est-blk"><div class="blk-head"><span class="blk-name">' + title + '</span><span class="blk-total"><span class="tnum">' + fmtMoney(total) + " €</span></span></div>" +
-      '<div class="est-table">' + head(kind) + rows.map(rowHtml).join("") + "</div></div>";
-  };
-  const single = !(STATE.works && STATE.materials);
-  let blocks = "";
-  if (STATE.works) blocks += block("Строительно-монтажные, отделочные и сопутствующие работы", t.worksRows, "w");
-  if (STATE.materials) blocks += block("Материалы", t.matRows, "m");
-  return '<div class="panel-dark' + (single ? " single" : "") + '">' + blocks + "</div>";
+  return '<div class="panel-dark"><div class="est-blk">' +
+    '<div class="blk-head"><span class="blk-name">Коммерческое предложение</span></div>' +
+    renderDoc(a, { flow: true }) +
+    '<div class="doc-save"><button class="btn ghost" id="btn-pdf">Сохранить PDF</button></div>' +
+    "</div></div>";
 }
 
 function renderEstimate(a) {
@@ -686,14 +629,30 @@ function renderDoc(a, opts) {
       const tblRow = (r) => '<div class="bp-row"><div class="num">' + r.n + '</div><div class="work">' + esc(r.name) + '</div><div class="unit">' + esc(r.unit) + '</div><div class="qty tnum">' + fmtQty(r.qty) + '</div><div class="price tnum">' + fmtMoney(r.price) + '</div><div class="sum tnum">' + fmtMoney(r.cost) + "</div></div>";
       const tblTail = '<div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + ' €</span></div></div>' +
         (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
-      if (print || flow) {
-        // Настоящая <table>: браузер сам переносит строки и повторяет thead —
-        // страница заполняется без остатка, шапка живёт на каждой странице.
-        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" +
-          '<table class="bp-table-print"><colgroup><col style="width:4.5%"><col><col style="width:9%"><col style="width:11%"><col style="width:16.5%"><col style="width:17%"></colgroup><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
-          a.docRows.map((r) => '<tr><td class="num">' + r.n + '</td><td class="work">' + esc(r.name) + '</td><td class="unit">' + esc(r.unit) + '</td><td class="qty tnum">' + fmtQty(r.qty) + '</td><td class="price tnum">' + fmtMoney(r.price) + '</td><td class="sum tnum">' + fmtMoney(r.cost) + "</td></tr>").join("") +
-          // итог — строка tbody: tfoot в печати повторяется на каждой странице
-          '<tr class="bp-total-row"><td colspan="6"><div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(a.docItogo) + " €</span></div></td></tr></tbody></table>" +
+      // Настоящая <table> — одна и та же в карточке КП и в PDF (что клиент
+      // читает, то и сохраняет); при выходе за страницу печати шапку
+      // повторяет браузер.
+      const printTable = (rows, total) => '<table class="bp-table-print"><colgroup><col style="width:4.5%"><col><col style="width:9%"><col style="width:11%"><col style="width:16.5%"><col style="width:17%"></colgroup><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
+        rows.map((r) => '<tr><td class="num">' + r.n + '</td><td class="work">' + esc(r.name) + '</td><td class="unit">' + esc(r.unit) + '</td><td class="qty tnum">' + fmtQty(r.qty) + '</td><td class="price tnum">' + fmtMoney(r.price) + '</td><td class="sum tnum">' + fmtMoney(r.cost) + "</td></tr>").join("") +
+        // итог — строка tbody: tfoot в печати повторяется на каждой странице
+        '<tr class="bp-total-row"><td colspan="6"><div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(total) + " €</span></div></td></tr></tbody></table>";
+      if (print) {
+        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + printTable(a.docRows, a.docItogo) +
+          (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
+      } else if (flow) {
+        // Вид по помещению (ТЗ ЛК v2 §3): «Все» — таблица документа (сквозная
+        // нумерация, сопутствующие последними, «Итого» 21 688,00); помещение —
+        // свой состав: нумерация с 1, плашка суммирует видимые строки (канон
+        // калькулятора — документное «Итого» не стоит под фильтрованной
+        // таблицей). Остальные зоны документа выбор не меняет.
+        let rows = a.docRows;
+        let total = a.docItogo;
+        if (STATE.room !== "all") {
+          const vRows = applyVariant(ESTIMATE_ROWS, m, STATE.variant).rows;
+          rows = mergeByName(vRows.filter((r) => r.room === STATE.room)).map((r, i) => ({ n: i + 1, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) }));
+          total = round2(rows.reduce((s, r) => s + r.cost, 0));
+        }
+        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + printTable(rows, total) +
           (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
       } else {
         const pagesArr = a.worksPages.length ? a.worksPages : [[]];
@@ -793,21 +752,13 @@ function renderDoc(a, opts) {
 
 
 /* ============================================================
-   Каркас ЛК клиента: герой (статус, цена, кнопки)
+   Каркас ЛК клиента: герой (статус, цена)
    ============================================================ */
 function renderHero(a) {
   const m = STATE.manifest;
   const st = STATE.status;
-  const cond = STATE.view === "conditions";
-  // Экраны (Иван 01.10): «Условия» / «Работы» / «Материалы» — под «Стоимость по
-  // проекту» в правой колонке героя. Условия — исключающий вид; Работы/Материалы —
-  // переключатели (один или оба, последний не выключается).
-  const nav =
-    '<div class="hero-nav">' +
-    '<button class="' + (cond ? "active" : "") + '" data-view="conditions"><span>Условия</span></button>' +
-    '<button class="' + (STATE.works && !cond ? "active" : "") + '" data-screen="works"><span>Работы</span></button>' +
-    '<button class="' + (STATE.materials && !cond ? "active" : "") + '" data-screen="materials"><span>Материалы</span></button>' +
-    "</div>";
+  // v2 (Иван 02.10): экранов нет — правая колонка героя заканчивается ценой;
+  // кабинет под героем — одна вкладка КП, навигация по помещениям в рейле.
   return (
     '<div class="d3-hero"><div class="gallery"><img src="' + m.images.hero + '" alt="">' +
     '<div class="ribbon"><span class="status-pill ' + (st === "agreed" ? "success" : "warn") + '"><span class="dot"></span>' + (st === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + " · " + esc(m.object.date) + '</span><span class="status-pill edition">Вариант: ' + a.variantLabel + "</span></div></div>" +
@@ -815,7 +766,7 @@ function renderHero(a) {
     "<h2>" + esc(subtitleShort(m)) + "</h2>" +
     '<div class="addr">' + esc(m.object.field_object) + "</div>" +
     '<div class="total"><div class="lbl">Стоимость по проекту</div><div class="v tnum">' + fmtMoney(a.price) + ' €</div>' +
-    '<div class="sub">+ 19% VAT</div></div>' + nav +
+    '<div class="sub">+ 19% VAT</div></div>' +
     "</div></div>"
   );
 }
@@ -830,5 +781,5 @@ function subtitleShort(m) {
    Экспорт (node — smoke-тест машины; браузер — глобальная область)
    ============================================================ */
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, estimateModel, estimateRows, estimateTables, mergeByName, renderEstimate, renderRail, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
+  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, mergeByName, roomModel, renderEstimate, renderRail, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
 }
