@@ -644,34 +644,6 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 }
 .bb-obj { font-size: 14px; font-weight: 600; white-space: nowrap; }
 .bb-obj .c { color: var(--ink-3); font-weight: 400; }
-.vtabs { display: flex; gap: 6px; }
-.vtabs button {
-  font: inherit;
-  font-size: 14px;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg-soft);
-  color: var(--ink-2);
-  cursor: pointer;
-}
-.vtabs button:hover { color: var(--ink-1); }
-.vtabs button.active { background: var(--accent-soft); border-color: transparent; color: var(--accent-dark); font-weight: 600; }
-.bb-diff {
-  font: inherit;
-  font-size: 12px;
-  color: var(--ink-3);
-  background: none;
-  border: none;
-  padding: 6px 4px;
-  cursor: pointer;
-  text-align: left;
-  max-width: 460px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.bb-diff:hover { color: var(--accent-dark); }
 .bb-modes { margin-left: auto; display: flex; gap: 6px; }
 .bb-modes button {
   font: inherit;

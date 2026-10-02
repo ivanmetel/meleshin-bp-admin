@@ -2,8 +2,10 @@
 // tz/bp/2026-10-02-tz-bp-admin.md, 02.10): админка = собранный клиентский документ
 // с видимым происхождением каждого элемента. Три колонки: рельс разделов документа
 // (статусы данных), сам документ (карточка ЛК — экран = PDF), инспектор источника
-// нажатого элемента. Состав работ read-only: источник — смета, правка состава —
-// только вариантами (табы с диффом). Верхняя панель: СОБРАТЬ / ПРОВЕРИТЬ /
+// нажатого элемента — редактируемые поля открываются в нём же. Состав работ
+// read-only: источник — смета. Табов вариантов на экране нет (Иван 02.10 —
+// семейство «перегородки» это данные сметы, не орган админки; наложение
+// вариантов остаётся механизмом машины). Верхняя панель: СОБРАТЬ / ПРОВЕРИТЬ /
 // ПРЕДПРОСМОТР ЛК / ОТПРАВИТЬ. Работает поверх engine.js; машина и манифест
 // без изменений. Вид «Маркдаун» и форм-грид «Конструктор» умерли (ТЗ §4–§5).
 const CLIENT_URL = "https://ivanmetel.github.io/meleshin-bp-client/";
@@ -42,35 +44,13 @@ function renderRail(a) {
 }
 
 /* ============================================================
-   Дифф варианта против базы (ТЗ §3)
-   ============================================================ */
-function variantDiff() {
-  const m = STATE.manifest;
-  const base = assemble(clone(m), "base");
-  const cur = assemble(clone(m), STATE.variant);
-  const lines = [];
-  cur.variantChanges.replaced.forEach((r) => lines.push("Замена: " + r.from + " → " + r.to));
-  cur.variantChanges.dropped.forEach((n) => lines.push("Исключено: " + n));
-  return { lines, delta: round2(cur.itogo - base.itogo) };
-}
-
-/* ============================================================
-   Верхняя панель: объект, табы вариантов, режимы
+   Верхняя панель: объект + режимы (табов вариантов нет — Иван 02.10)
    ============================================================ */
 function renderBar(a) {
   const m = STATE.manifest;
-  const tabs = Object.entries(m.variants).map(([k, v]) =>
-    '<button data-variant="' + esc(k) + '"' + (STATE.variant === k ? ' class="active"' : "") + ">" + esc(v.label) + "</button>").join("");
-  let diff = "";
-  if (STATE.variant !== "base") {
-    const d = variantDiff();
-    const delta = (d.delta > 0 ? "+" : "") + fmtMoney(d.delta);
-    diff = '<button class="bb-diff" data-insp-variant="1">' + esc(d.lines.join("; ") || "без изменений") + " — итого " + delta + " €</button>";
-  }
   const mode = (k, label) => '<button data-view="' + k + '"' + (STATE.view === k ? ' class="active"' : "") + ">" + label + "</button>";
   return (
     '<div class="bb-obj">' + esc(m.object.folder) + ' <span class="c">— КП от ' + esc(m.object.date) + "</span></div>" +
-    '<div class="vtabs">' + tabs + "</div>" + diff +
     '<div class="bb-modes">' +
     mode("build", "Собрать") +
     mode("check", "Проверить " + a.gatesPassed + "/" + a.gatesTotal) +
@@ -99,9 +79,10 @@ function currentWorkRows(a) {
 function renderInspector(a) {
   const m = STATE.manifest;
   const insp = STATE.insp;
-  if (!insp) return inspCard("Конструктор «Собрать»",
-    '<p class="insp-text">Кликните по любому элементу документа — панель покажет, откуда он: строку сметы, фиксированный блок ТЗ или редактируемое поле.</p>' +
-    '<p class="insp-text">Состав работ не редактируется: он подтянут из сметы. Правка состава — вариантами (табы сверху).</p>' +
+  if (!insp) return inspCard("Как править",
+    '<p class="insp-text">Кликните по элементу документа — здесь откроется его источник, а редактируемые поля появятся в этой панели.</p>' +
+    '<p class="insp-text">Редактируются: титул, подзаголовок и дата; заголовок таблицы работ; условия оплаты; род цены; решения по разделам — согласования, организация работ, фото, форма блока «В стоимость не входят».</p>' +
+    '<p class="insp-text">Состав работ приходит из сметы, тексты блоков заданы ТЗ — клик по ним показывает происхождение, без правки здесь.</p>' +
     '<div class="insp-actions"><button class="btn ghost" data-act="reset">Сбросить манифест</button></div>');
 
   if (insp.kind === "work") {
@@ -192,14 +173,6 @@ function renderInspector(a) {
       srcTag("Источник: карточка проекта") + inspNote("Списки позиций (отделочные материалы, чистовая электрика и сантехника) приходят из карточки."));
   }
 
-  if (insp.kind === "variant") {
-    const d = variantDiff();
-    return inspCard("Вариант: " + assemble(clone(m), STATE.variant).variantLabel,
-      d.lines.map((l) => '<div class="insp-row"><span></span><span>' + esc(l) + "</span></div>").join("") +
-      inspRow("Разница с базой", (d.delta > 0 ? "+" : "") + fmtMoney(d.delta) + " €") +
-      inspNote("Вариант — наложение на базовый состав: замена или исключение строк. Базовый состав не трогается."));
-  }
-
   return inspCard("Фиксированный блок ТЗ", inspNote("Этот текст фиксирован спецификацией и в конструкторе не редактируется."));
 }
 
@@ -286,18 +259,43 @@ function renderAll() {
   main3.classList.toggle("only-doc", STATE.view !== "build");
   document.getElementById("rail").innerHTML = STATE.view === "build" ? renderRail(a) : "";
   const docwrap = document.getElementById("docwrap");
+  const keep = STATE.view === "build" ? [docwrap.scrollLeft, docwrap.scrollTop] : null;   // перерисовка не прыгает в начало документа
   if (STATE.view === "build") docwrap.innerHTML = '<div class="doc-frame">' + renderDoc(a, { flow: true }) + "</div>";
   else if (STATE.view === "check") docwrap.innerHTML = renderReport(a);
   else docwrap.innerHTML = renderSend(a);
   document.getElementById("inspector").innerHTML = STATE.view === "build" ? renderInspector(a) : "";
   wire(a);
+  if (keep) { docwrap.scrollLeft = keep[0]; docwrap.scrollTop = keep[1]; }
+}
+
+// Поля и кнопки инспектора навешиваются отдельно: карточка инспектора
+// перерисовывается и без полной перерисовки (клик по документу), и ей нужны живые обработчики
+function wireInspector(a) {
+  const insp = document.getElementById("inspector");
+  insp.querySelectorAll("[data-path]").forEach((inp) => inp.addEventListener("change", () => {
+    setPath(STATE.manifest, inp.dataset.path, inp.type === "checkbox" ? inp.checked : inp.value);
+    renderAll();
+  }));
+  insp.querySelectorAll("button[data-act]").forEach((b) => b.addEventListener("click", () => {
+    const act = b.dataset.act;
+    if (act === "reset") { STATE.manifest = clone(MANIFEST_DEFAULT); STATE.variant = "base"; STATE.insp = null; }
+    if (act === "permits") STATE.manifest.layout.permits = !STATE.manifest.layout.permits;
+    if (act === "preview") { previewClient(); return; }
+    renderAll();
+  }));
+  insp.querySelectorAll("input[data-act='photos']").forEach((inp) => inp.addEventListener("change", () => {
+    const om = STATE.manifest.layout.omit;
+    const i = om.indexOf("photos");
+    if (inp.checked && i >= 0) om.splice(i, 1);
+    if (!inp.checked && i < 0) om.push("photos");
+    renderAll();
+  }));
+  insp.querySelectorAll("[data-status]").forEach((b) => b.addEventListener("click", () => { STATE.status = b.dataset.status; renderAll(); }));
 }
 
 function wire(a) {
-  const root = document;   // табы и режимы живут в build-bar, прочее — в main3: вешаем со документа
+  const root = document;   // режимы живут в build-bar, рельс — в main3: вешаем со документа
   root.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => { STATE.view = b.dataset.view; STATE.insp = null; renderAll(); }));
-  root.querySelectorAll("[data-variant]").forEach((b) => b.addEventListener("click", () => { STATE.variant = b.dataset.variant; STATE.insp = { kind: "variant" }; renderAll(); }));
-  root.querySelectorAll("[data-insp-variant]").forEach((b) => b.addEventListener("click", () => { STATE.insp = { kind: "variant" }; renderAll(); }));
   root.querySelectorAll(".rail-item").forEach((b) => b.addEventListener("click", () => {
     const el = document.querySelector(b.dataset.sel) || (b.dataset.selFb && document.querySelector(b.dataset.selFb));
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -307,25 +305,7 @@ function wire(a) {
     const el = document.querySelector(b.dataset.goto);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
-  root.querySelectorAll("[data-path]").forEach((inp) => inp.addEventListener("change", () => {
-    setPath(STATE.manifest, inp.dataset.path, inp.type === "checkbox" ? inp.checked : inp.value);
-    renderAll();
-  }));
-  root.querySelectorAll("button[data-act]").forEach((b) => b.addEventListener("click", () => {
-    const act = b.dataset.act;
-    if (act === "reset") { STATE.manifest = clone(MANIFEST_DEFAULT); STATE.variant = "base"; STATE.insp = null; }
-    if (act === "permits") STATE.manifest.layout.permits = !STATE.manifest.layout.permits;
-    if (act === "preview") { previewClient(); return; }
-    renderAll();
-  }));
-  root.querySelectorAll("input[data-act='photos']").forEach((inp) => inp.addEventListener("change", () => {
-    const om = STATE.manifest.layout.omit;
-    const i = om.indexOf("photos");
-    if (inp.checked && i >= 0) om.splice(i, 1);
-    if (!inp.checked && i < 0) om.push("photos");
-    renderAll();
-  }));
-  root.querySelectorAll("[data-status]").forEach((b) => b.addEventListener("click", () => { STATE.status = b.dataset.status; renderAll(); }));
+  wireInspector(a);
   docwrapClick(a);
 }
 
@@ -337,6 +317,7 @@ function docwrapClick(a) {
     if (r.room) { STATE.room = r.room; STATE.insp = null; renderAll(); return; }
     STATE.insp = r;
     document.getElementById("inspector").innerHTML = renderInspector(a);
+    wireInspector(a);
   };
 }
 
