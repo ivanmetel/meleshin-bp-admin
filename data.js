@@ -193,7 +193,7 @@ const MANIFEST_DEFAULT = {
   layout: {
     brand: "MELESHIN LTD", // решение 1
     permits: true, // решение 3
-    works_heading: "Состав работ",
+    works_heading: "Строительно-монтажные, отделочные и сопутствующие работы",
     org_process: "on", // on | fold (fold → also_included)
     related_table: "separate", // separate | inline
     omit: [], // photos | permits

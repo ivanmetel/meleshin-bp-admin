@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-01",
+  "generated": "2026-10-02",
   "variant": "base",
   "status": "sent",
   "manifest": {
@@ -14,8 +14,7 @@
       "field_materials": "Черновые материалы закупает и доставляет Исполнитель; подъём на этаж включён.",
       "language": "ru",
       "date": "30.09.2026",
-      "date_iso": "2026-09-30",
-      "manager_top": true
+      "date_iso": "2026-09-30"
     },
     "sources": {
       "card": "renovation/2699-Limassol-Apartment/2026-09-28-meleshin-2699-Limassol-Apartment-card.md",
@@ -61,7 +60,7 @@
     "layout": {
       "brand": "MELESHIN LTD",
       "permits": true,
-      "works_heading": "Состав работ",
+      "works_heading": "Строительно-монтажные, отделочные и сопутствующие работы",
       "org_process": "on",
       "related_table": "separate",
       "omit": [],

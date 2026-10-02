@@ -12,7 +12,7 @@ function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").
 function round2(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }
 function thousands(s) { return s.replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
 function fmtMoney(v) { return thousands(round2(v).toFixed(2).replace(".", ",")); }
-function fmtQty(v) { return Number.isInteger(v) ? thousands(String(v)) : thousands(round2(v).toFixed(2).replace(".", ",")); }
+function fmtQty(v) { return thousands(round2(v).toFixed(2).replace(".", ",")); }   // количества с сотыми — всегда (Иван 02.10)
 
 /* ============================================================
    Машина: вариант → агрегация → таблица → документ
@@ -95,7 +95,9 @@ function assemble(manifest, variantKey) {
 
   // Цена (Документ 3.21а): строка-заголовок собирается из таблицы + сопутствующих + материалов.
   const priceLine = (m.commerce.price.kind === "estimate" ? "Ориентировочная стоимость по проекту составляет " : "Стоимость по проекту составляет ") + fmtMoney(price) + " € + 19% VAT.";
-  const breakdownLine = "В том числе: работы — " + fmtMoney(worksSum) + " €, черновые материалы — " + fmtMoney(materials) + " €.";
+  // Расшифровка (Иван 02.10): черновые материалы называются без сумм — количество
+  // живёт в цене, строка ничего не itemizes.
+  const breakdownLine = "В том числе: черновые материалы.";
 
   const sections = [];
   const md = [];
@@ -108,7 +110,7 @@ function assemble(manifest, variantKey) {
   md.push("marp: true");
   md.push('theme: "concept-note-involve"');
   md.push("paginate: true");
-  md.push("header: '<span style=\"display:block;font-size:18px;border-bottom:1.5px solid #ccc;padding-bottom:1mm\"><img src=\"../../meleshin-logo.png\" style=\"float:left;height:23px;object-fit:contain;margin-right:12px\"><span style=\"position:relative\"><b>" + brand + "</b> <span style=\"font-weight:400\">| Коммерческое предложение</span></span></span>'");
+  md.push("header: '<span style=\"display:block;font-size:18px;border-bottom:1.5px solid #ccc;padding-bottom:1mm\"><img src=\"../../meleshin-logo.png\" style=\"float:left;height:23px;object-fit:contain;margin-right:12px\"><b>" + brand + "</b></span>'");   // полоса — лого + бренд; документ называет себя заголовком (Иван 02.10 — без дубля фразы)
   md.push('footer: <a href="https://meleshin.com.cy" style="color: inherit; text-decoration: none;">' + brand + '</a> | <a href="tel:+35777788811" style="color: inherit; text-decoration: none;">+357 77 788811</a> | [order@meleshin.com.cy](mailto:order@meleshin.com.cy) | <a href="https://www.instagram.com/renovation_cyprus" style="color: inherit; text-decoration: none;">Instagram: renovation_cyprus</a>');
   md.push("---");
   md.push("");
@@ -514,9 +516,10 @@ function build() {
 
 /* ============================================================
    ЛК клиента v2 (Иван 02.10): одна вкладка — КП. Экраны сметы умерли
-   (Работы/Материалы), документ КП занимает вкладку целиком; рейл
-   «Помещение» фильтрует таблицу работ внутри документа; печать —
-   всегда полный документ (ТЗ tz/bp/2026-10-02-tz-bp-client-v2.md).
+   (Работы/Материалы), документ КП занимает вкладку целиком; выбор
+   помещения — строка кнопок в документе, фильтрует таблицу работ;
+   печать — всегда полный документ (ТЗ tz/bp/2026-10-02-tz-bp-client-v2.md,
+   раунд ревью §8: экран = PDF).
    ============================================================ */
 
 // Встроенный калькулятор (канон 01.10): каждое число экрана — арифметика
@@ -534,9 +537,9 @@ function mergeByName(list) {
   return [...map.values()];
 }
 
-// Рейл «Помещение» (Иван 02.10): комнаты источника работ + счётчик строк
-// после схлопывания одинаковых имя+цена (каунтер считает строки таблицы
-// этого помещения; каунтеры материалов умерли вместе с экраном).
+// Выбор помещения (Иван 02.10, раунд): комнаты источника работ + счётчик строк
+// после схлопывания одинаковых имя+цена (каунтер считает строки таблицы этого
+// помещения). Переносится из рейла горизонтальной строкой в документ.
 function roomModel(a) {
   const vRows = applyVariant(ESTIMATE_ROWS, STATE.manifest, STATE.variant).rows;
   const names = [];
@@ -547,28 +550,19 @@ function roomModel(a) {
   };
 }
 
-function renderRail(a) {
-  const rm = roomModel(a);
-  const act = (x) => (STATE.room === x ? ' class="active"' : "");
-  return '<div class="est-rooms"><div class="est-rooms-h">Помещение</div>' +
-    '<button data-room="all"' + act("all") + '><span>Все</span><span class="c">' + rm.all + "</span></button>" +
-    rm.rooms.map((r) => '<button data-room="' + esc(r.name) + '"' + act(r.name) + '><span>' + esc(r.name) + '</span><span class="c">' + r.count + "</span></button>").join("") + "</div>";
-}
-
-// Вкладка КП (Иван 02.10): тёмная панель с полосой названия — каркас канона
-// сметы; внутри — документ КП читаемой веб-карточкой (без листов А4 и без
-// слова «предпросмотр»), «Сохранить PDF» — после подписи и контактной строки.
-// Печать собирается от манифеста — выбор помещения на экране в PDF не попадает.
+// Вкладка КП (Иван 02.10, раунд): тёмная панель без полосы названия — документ
+// называет себя сам (крупный заголовок в карточке, как в PDF); карточка — ширины
+// А4, «Сохранить PDF» — после подписи и контактной строки. Печать собирается
+// от манифеста — выбор помещения на экране в PDF не попадает.
 function renderPanel(a) {
   return '<div class="panel-dark"><div class="est-blk">' +
-    '<div class="blk-head"><span class="blk-name">Коммерческое предложение</span></div>' +
     renderDoc(a, { flow: true }) +
     '<div class="doc-save"><button class="btn ghost" id="btn-pdf">Сохранить PDF</button></div>' +
     "</div></div>";
 }
 
 function renderEstimate(a) {
-  return '<div id="est-root"><div class="est-body">' + renderRail(a) + renderPanel(a) + "</div></div>";
+  return '<div id="est-root">' + renderPanel(a) + "</div>";
 }
 
 /* ============================================================
@@ -606,11 +600,11 @@ function renderDoc(a, opts) {
   a.sections.forEach((sec) => {
     let inner = "";
     if (sec.id === "sec-open") {
-      // Полоса заголовка — правило корпуса BP (Иван 01.10): лого слева, рядом
-      // бренд; в печати/листах полоса называет документ («| Коммерческое
-      // предложение»), в потоке («Условия» ЛК) название несёт полоса панели.
-      const titleBlock = flow ? "" : '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>";
-      const band = '<div class="doc-band"><img src="meleshin-logo.png" alt="MELESHIN"><b>' + esc(m.layout.brand) + "</b>" + (flow ? "" : '<span>| ' + FIXED.title + "</span>") + "</div>";
+      // Полоса заголовка — правило корпуса BP: лого слева, рядом бренд. Полоса
+      // не называет документ (Иван 02.10): «Коммерческое предложение» — сам
+      // заголовок, крупно и по центру, во всех видах, включая поток ЛК (экран = PDF).
+      const titleBlock = '<div class="doc-title-outer"><div class="doc-title">' + FIXED.title + '</div><div class="doc-subtitle">' + esc(m.object.subtitle) + "</div></div>";
+      const band = '<div class="doc-band"><img src="meleshin-logo.png" alt="MELESHIN"><b>' + esc(m.layout.brand) + "</b></div>";
       inner = band + titleBlock +
         '<div class="doc-h2">' + FIXED.description_h2 + '</div><div class="doc-grid"><div class="doc-text"><p>' + esc(m.object.opening.replace("{brand}", m.layout.brand.replace(/^MELESHIN\s*/, ""))) + '</p><p><b>Объект.</b> ' + esc(m.object.field_object) + '</p><p><b>Зона работ.</b> ' + esc(m.object.field_zone) + '</p><p><b>Материалы и транспорт.</b> ' + esc(m.object.field_materials) + "</p></div>" +
         '<div class="doc-hero"><img src="' + m.images.hero + '" alt=""></div></div>';
@@ -631,8 +625,13 @@ function renderDoc(a, opts) {
         (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
       // Настоящая <table> — одна и та же в карточке КП и в PDF (что клиент
       // читает, то и сохраняет); при выходе за страницу печати шапку
-      // повторяет браузер.
-      const printTable = (rows, total) => '<table class="bp-table-print"><colgroup><col style="width:4.5%"><col><col style="width:9%"><col style="width:11%"><col style="width:16.5%"><col style="width:17%"></colgroup><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
+      // повторяет браузер. Ширины колонок — фиксированные пиксели по максимуму
+      // роли + паддинг ячейки 20 + запас 2 (замер 14 px Inter, 02.10):
+      //   # 40 («99») · Ед. 68 («компл.») · Кол-во 84 («9 999,99»)
+      //   Цена за ед., € 118 (заголовок 96,2) · Стоимость, € 116 (заголовок 94,1)
+      // имя забирает остаток 262; карточка = печатной полосе 688 px, поэтому
+      // одни и те же px служат экрану и печати (Иван 02.10 — «про ширину таблицы»).
+      const printTable = (rows, total) => '<table class="bp-table-print"><colgroup><col style="width:40px"><col><col style="width:68px"><col style="width:84px"><col style="width:118px"><col style="width:116px"></colgroup><thead><tr>' + FIXED.works_cols.map((c, i) => '<th class="' + (i > 2 ? "r" : "") + '">' + c + "</th>").join("") + "</tr></thead><tbody>" +
         rows.map((r) => '<tr><td class="num">' + r.n + '</td><td class="work">' + esc(r.name) + '</td><td class="unit">' + esc(r.unit) + '</td><td class="qty tnum">' + fmtQty(r.qty) + '</td><td class="price tnum">' + fmtMoney(r.price) + '</td><td class="sum tnum">' + fmtMoney(r.cost) + "</td></tr>").join("") +
         // итог — строка tbody: tfoot в печати повторяется на каждой странице
         '<tr class="bp-total-row"><td colspan="6"><div class="bp-total"><span class="lbl">Итого:</span><span class="v tnum">' + fmtMoney(total) + " €</span></div></td></tr></tbody></table>";
@@ -640,11 +639,12 @@ function renderDoc(a, opts) {
         inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + printTable(a.docRows, a.docItogo) +
           (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
       } else if (flow) {
-        // Вид по помещению (ТЗ ЛК v2 §3): «Все» — таблица документа (сквозная
-        // нумерация, сопутствующие последними, «Итого» 21 688,00); помещение —
-        // свой состав: нумерация с 1, плашка суммирует видимые строки (канон
-        // калькулятора — документное «Итого» не стоит под фильтрованной
-        // таблицей). Остальные зоны документа выбор не меняет.
+        // Вид по помещению (ТЗ ЛК v2 §3 + раунд 02.10): «Все» — таблица документа
+        // (сквозная нумерация, сопутствующие последними, «Итого» 21 688,00);
+        // помещение — свой состав: нумерация с 1, плашка суммирует видимые строки
+        // (канон калькулятора). Выбор помещения — горизонтальная строка кнопок
+        // между заголовком зоны и таблицей (рейл умер); экранная кнопка, в PDF
+        // не попадает. Остальные зоны документа выбор не меняет.
         let rows = a.docRows;
         let total = a.docItogo;
         if (STATE.room !== "all") {
@@ -652,7 +652,13 @@ function renderDoc(a, opts) {
           rows = mergeByName(vRows.filter((r) => r.room === STATE.room)).map((r, i) => ({ n: i + 1, name: r.name, unit: r.unit, qty: r.qty, price: r.price, cost: round2(r.qty * r.price) }));
           total = round2(rows.reduce((s, r) => s + r.cost, 0));
         }
-        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + printTable(rows, total) +
+        const rm = roomModel(a);
+        const act = (x) => (STATE.room === x ? ' class="active"' : "");
+        const chooser = '<div class="room-tabs">' +
+          '<button data-room="all"' + act("all") + '><span>Все</span><span class="c">' + rm.all + "</span></button>" +
+          rm.rooms.map((r) => '<button data-room="' + esc(r.name) + '"' + act(r.name) + '><span>' + esc(r.name) + '</span><span class="c">' + r.count + "</span></button>").join("") +
+          "</div>";
+        inner = '<div class="doc-h2">' + esc(m.layout.works_heading) + "</div>" + chooser + printTable(rows, total) +
           (a.has.prelim_note ? '<p class="doc-note">' + FIXED.prelim_note + "</p>" : "");
       } else {
         const pagesArr = a.worksPages.length ? a.worksPages : [[]];
@@ -762,7 +768,10 @@ function renderHero(a) {
   return (
     '<div class="d3-hero"><div class="gallery"><img src="' + m.images.hero + '" alt="">' +
     '<div class="ribbon"><span class="status-pill ' + (st === "agreed" ? "success" : "warn") + '"><span class="dot"></span>' + (st === "agreed" ? FIXED.status_agreed : FIXED.status_sent) + " · " + esc(m.object.date) + '</span><span class="status-pill edition">Вариант: ' + a.variantLabel + "</span></div></div>" +
-    '<div class="summary"><div class="proj-label">Коммерческое предложение</div>' +
+    // Без ярлыка «Коммерческое предложение» (Иван 02.10, раунд): документ
+    // называет себя один раз — титульным блоком в карточке; герой несёт
+    // подзаголовок, адрес и цену.
+    '<div class="summary">' +
     "<h2>" + esc(subtitleShort(m)) + "</h2>" +
     '<div class="addr">' + esc(m.object.field_object) + "</div>" +
     '<div class="total"><div class="lbl">Стоимость по проекту</div><div class="v tnum">' + fmtMoney(a.price) + ' €</div>' +
@@ -781,5 +790,5 @@ function subtitleShort(m) {
    Экспорт (node — smoke-тест машины; браузер — глобальная область)
    ============================================================ */
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, mergeByName, roomModel, renderEstimate, renderRail, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
+  module.exports = { ESTIMATE_ROWS, MATERIALS_ROWS, MANIFEST_DEFAULT, FIXED, STATE, clone, assemble, aggregate, applyVariant, runGates, repetitionScan, mergeByName, roomModel, renderEstimate, renderPanel, renderDoc, renderHero, renderWorksTable, fmtMoney, fmtQty, build };
 }
